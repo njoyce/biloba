@@ -51,4 +51,3 @@ def waitany(events, timeout=None, result_class=event.AsyncResult):
     finally:
         for event in events:
             event.unlink(update)
-
