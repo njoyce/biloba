@@ -19,7 +19,7 @@ def get_test_requires():
 
 setup_args = dict(
     name='biloba',
-    version='0.1.0',
+    version='0.1.1',
     packages=find_packages(),
     install_requires=get_install_requires(),
     tests_require=get_test_requires(),
