@@ -176,7 +176,7 @@ class ConfigurableService(Service):
         self.apply_default_config()
 
     def get_logger(self):
-        logger = super(Service, self).get_logger()
+        logger = super(ConfigurableService, self).get_logger()
 
         sentry_dsn = self.config.get('SENTRY_DSN')
 
