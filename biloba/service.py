@@ -1,3 +1,5 @@
+import functools
+
 import gevent
 import logbook
 
@@ -60,7 +62,24 @@ class Service(object):
         Spawns a greenlet that is linked to this service and will be killed if
         the service stops.
         """
-        g = gevent.spawn(func, *args, **kwargs)
+        def log_exc(func):
+            """
+            Log any exceptions as they happen from the function being spawned.
+            """
+            @functools.wraps
+            def wrapper(*args, **kwargs):
+                try:
+                    func(*args, **kwargs)
+                except Exception:
+                    self.logger.exception(
+                        '{}(*{!r), **{!r})'.format(func, args, kwargs)
+                    )
+
+                    raise
+
+            return wrapper
+
+        g = gevent.spawn(log_exc(func), *args, **kwargs)
 
         self.spawned_greenlets.append(g)
 
