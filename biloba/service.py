@@ -66,7 +66,7 @@ class Service(object):
             """
             Log any exceptions as they happen from the function being spawned.
             """
-            @functools.wraps
+            @functools.wraps(func)
             def wrapper(*args, **kwargs):
                 try:
                     func(*args, **kwargs)
