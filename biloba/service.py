@@ -69,10 +69,10 @@ class Service(object):
             @functools.wraps(func)
             def wrapper(*args, **kwargs):
                 try:
-                    func(*args, **kwargs)
+                    return func(*args, **kwargs)
                 except Exception:
                     self.logger.exception(
-                        '{}(*{!r), **{!r})'.format(func, args, kwargs)
+                        '{}(*{!r}), **{!r})'.format(func, args, kwargs)
                     )
 
                     raise
