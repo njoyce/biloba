@@ -51,3 +51,19 @@ def waitany(events, timeout=None, result_class=event.AsyncResult):
     finally:
         for event in events:
             event.unlink(update)
+
+
+def get_config_key(config, key, default=None):
+    """
+    Uses a dotted notation to traverse a dict.
+    """
+    val = config
+    missing = object()
+
+    for part in key.split('.'):
+        val = val.get(part, missing)
+
+        if val is missing:
+            return default
+
+    return val or default
