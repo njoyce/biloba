@@ -20,6 +20,8 @@ def get_test_requires():
 setup_args = dict(
     name='biloba',
     version='0.1.4',
+    maintainer='Nick Joyce',
+    maintainer_email='nick@boxdesign.co.uk',
     packages=find_packages(),
     install_requires=get_install_requires(),
     tests_require=get_test_requires(),
