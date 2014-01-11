@@ -2,11 +2,12 @@ import functools
 
 import gevent
 import logbook
+import pyee
 
 from . import util
 
 
-class Service(object):
+class Service(pyee.EventEmitter):
     """
     An asynchronous primitive that will maintain a pool of spawned greenlets
     and watch any child services (which are just objects the same as this).
@@ -26,6 +27,8 @@ class Service(object):
     """
 
     def __init__(self):
+        super(Service, self).__init__()
+
         self.started = False
         self.services = []
         self.spawned_greenlets = []
@@ -70,10 +73,12 @@ class Service(object):
             def wrapper(*args, **kwargs):
                 try:
                     return func(*args, **kwargs)
-                except Exception:
+                except Exception as e:
                     self.logger.exception(
                         '{}(*{!r}), **{!r})'.format(func, args, kwargs)
                     )
+
+                    self.emit('error', e)
 
                     raise
 
@@ -120,6 +125,8 @@ class Service(object):
 
         self.started = True
 
+        self.emit('start')
+
     def stop(self):
         """
         Called to stop this service if it is running. All child services are
@@ -144,6 +151,7 @@ class Service(object):
             self.do_stop()
         finally:
             self.started = False
+            self.emit('stop')
 
     def join(self):
         """
@@ -179,6 +187,8 @@ class Service(object):
             g.kill()
 
         if ret.exception:
+            self.emit('error', ret.exception)
+
             raise ret.exception
 
 
