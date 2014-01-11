@@ -2,6 +2,8 @@ from setuptools import find_packages, setup
 
 from pip.req import parse_requirements
 
+import biloba
+
 
 def get_requirements(filename):
     reqs = parse_requirements(filename)
@@ -19,7 +21,7 @@ def get_test_requires():
 
 setup_args = dict(
     name='biloba',
-    version='0.1.4',
+    version=biloba.__version__,
     maintainer='Nick Joyce',
     maintainer_email='nick@boxdesign.co.uk',
     packages=find_packages(),
