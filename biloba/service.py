@@ -279,3 +279,15 @@ def install_raven(logger, sentry_dsn):
     logger.handlers.append(handler)
 
     return logger
+
+
+def run(service):
+    """
+    Helper function to start, join and stop a service.
+    """
+    service.start()
+
+    try:
+        service.join()
+    finally:
+        service.stop()
