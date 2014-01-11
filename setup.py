@@ -2,7 +2,14 @@ from setuptools import find_packages, setup
 
 from pip.req import parse_requirements
 
-import biloba
+
+def get_version():
+    import imp
+
+    with open('biloba/_meta.py', 'rb') as fp:
+        mod = imp.load_source('_meta', 'biloba', fp)
+
+    return mod.version
 
 
 def get_requirements(filename):
@@ -21,7 +28,7 @@ def get_test_requires():
 
 setup_args = dict(
     name='biloba',
-    version=biloba.__version__,
+    version=get_version(),
     maintainer='Nick Joyce',
     maintainer_email='nick@boxdesign.co.uk',
     packages=find_packages(),
