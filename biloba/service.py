@@ -256,13 +256,7 @@ class ConfigurableService(Service):
         if not sentry_dsn:
             return logger
 
-        from raven.handlers.logbook import SentryHandler
-
-        handler = SentryHandler(sentry_dsn, bubble=True)
-
-        logger.handlers.append(handler)
-
-        return logger
+        return install_raven(logger, sentry_dsn)
 
     def get_config_defaults(self):
         return {}
@@ -272,3 +266,16 @@ class ConfigurableService(Service):
 
         for key, value in defaults.items():
             self.config.setdefault(key, value)
+
+
+def install_raven(logger, sentry_dsn):
+    try:
+        from raven.handlers.logbook import SentryHandler
+    except ImportError:
+        return logger
+
+    handler = SentryHandler(sentry_dsn, bubble=True)
+
+    logger.handlers.append(handler)
+
+    return logger
