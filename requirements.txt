@@ -1,3 +1,4 @@
-gevent==1.0
-Logbook==0.6.0
-raven==3.5.2
+gevent>=1.0
+Logbook>=0.6.0
+raven>=3.5
+pyee>=0.0.9
