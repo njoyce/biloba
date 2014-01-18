@@ -44,8 +44,10 @@ class Service(pyee.EventEmitter):
     def logger(self):
         return self.get_logger()
 
+    logger_name = None
 
     def get_logger(self):
+        return logbook.Logger(self.logger_name or self.__class__.__name__)
 
     def do_start(self):
         """
