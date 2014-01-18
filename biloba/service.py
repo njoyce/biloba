@@ -248,6 +248,14 @@ class Config(object):
 
         return self.expand(value)
 
+    def setdefault(self, key, value):
+        missing = object()
+
+        original_value = self.get(key, missing)
+
+        if original_value is missing:
+            self.config[key] = value
+
 
 class ConfigurableService(Service):
     """
