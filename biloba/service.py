@@ -214,16 +214,6 @@ class ConfigurableService(Service):
 
         self.apply_default_config()
 
-    def get_logger(self):
-        logger = super(ConfigurableService, self).get_logger()
-
-        sentry_dsn = self.config.get('SENTRY_DSN')
-
-        if not sentry_dsn:
-            return logger
-
-        return install_raven(logger, sentry_dsn)
-
     def get_config_defaults(self):
         return {}
 
@@ -232,21 +222,6 @@ class ConfigurableService(Service):
 
         for key, value in defaults.items():
             self.config.setdefault(key, value)
-
-
-def install_raven(logger, sentry_dsn):
-    try:
-        from raven.handlers.logbook import SentryHandler
-    except ImportError:
-        return logger
-
-    handler = SentryHandler(sentry_dsn, bubble=True)
-
-    logger.handlers.append(handler)
-
-    return logger
-
-
 def run(service):
     """
     Helper function to start, join and stop a service.
