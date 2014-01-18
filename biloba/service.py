@@ -44,6 +44,7 @@ class Service(pyee.EventEmitter):
     def logger(self):
         return self.get_logger()
 
+    # set to specify the logger name (before the first access)
     logger_name = None
 
     def get_logger(self):
