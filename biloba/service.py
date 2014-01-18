@@ -33,7 +33,6 @@ class Service(pyee.EventEmitter):
         self.started = False
         self.services = []
         self.spawned_greenlets = []
-        self._logger = None
 
     def __del__(self):
         try:
