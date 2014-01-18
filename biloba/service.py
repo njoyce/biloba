@@ -1,4 +1,5 @@
 import functools
+import sys
 
 import gevent
 import logbook
@@ -79,14 +80,8 @@ class Service(pyee.EventEmitter):
             def wrapper(*args, **kwargs):
                 try:
                     return func(*args, **kwargs)
-                except Exception as e:
-                    self.logger.exception(
-                        '{}(*{!r}), **{!r})'.format(func, args, kwargs)
-                    )
-
-                    self.emit('error', e)
-
-                    raise
+                except Exception:
+                    self.emit('error', *sys.exc_info())
 
             return wrapper
 
