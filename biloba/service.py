@@ -5,7 +5,7 @@ import gevent
 import logbook
 import pyee
 
-from . import util
+from . import util, config as biloba_config
 
 
 class Service(pyee.EventEmitter):
@@ -199,8 +199,6 @@ class Service(pyee.EventEmitter):
             raise ret.exception
 
 
-
-
 class ConfigurableService(Service):
     """
     A service that takes a config dict
@@ -212,7 +210,7 @@ class ConfigurableService(Service):
         """
         super(ConfigurableService, self).__init__()
 
-        self.config = Config(config)
+        self.config = biloba_config.Config(config)
 
         self.apply_default_config()
 
