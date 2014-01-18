@@ -25,12 +25,14 @@ def waitany(greenlets, timeout=None, result_class=event.AsyncResult):
     """
     Given a list of greenlets, wait for the first one to return a result.
 
-    :param tasks: A list of greenlets.
+    Note that only the greenlet is returned, not the value (or the exception).
+
+    :param greenlets: A list of greenlets.
     :param timeout: The maximum amount of time to wait before raising
         `gevent.Timeout`. A timeout of `None` means to wait potentially
         forever.
     :param result_class: Advanced usage and tests.
-    :return: The result of the returned greenlet.
+    :return: The greenlet that first returned a result.
     """
     result = result_class()
     update = result.set
@@ -46,10 +48,7 @@ def waitany(greenlets, timeout=None, result_class=event.AsyncResult):
                 continue
 
             # this greenlet contains a value already
-            if thread.successful():
-                return thread.value
-
-            raise thread.exception
+            return thread
 
         return result.get(timeout=timeout)
     finally:
