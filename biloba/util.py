@@ -10,7 +10,7 @@ class cachedproperty(object):
     def __init__(self, func):
         self.func = func
 
-    def __get__(self, obj, type=None):
+    def __get__(self, obj, *args, **kwargs):
         if obj is None:
             return self
 
