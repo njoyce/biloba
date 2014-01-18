@@ -5,6 +5,8 @@ Tests for `biloba.service`.
 import unittest
 import mock
 
+import gevent
+
 from biloba import service
 
 
@@ -209,3 +211,115 @@ class ServiceTestCase(unittest.TestCase):
         self.assertEqual(my_service.services, [])
 
         mock_greenlet.stop.assert_called_once_with()
+
+    @mock.patch.object(service.Service, 'start')
+    @mock.patch.object(service.Service, 'stop')
+    def test_join(self, mock_stop, mock_start):
+        """
+        Ensure that `join` works as one would expect.
+        """
+        my_service = make_service()
+
+        my_service.spawn(lambda: 'foobar')
+
+        my_service.join()
+
+        mock_start.assert_called_once_with()
+        mock_stop.assert_called_with()
+
+    def test_spawn(self):
+        """
+        Spawning a greenlet via the service allows for special things.
+        """
+        my_service = make_service()
+
+        thread = my_service.spawn(lambda: [1, 2, 3])
+
+        self.assertIn(thread, my_service.spawned_greenlets)
+
+        # force a couple of context switches which allows the greenlet to be
+        # cleaned up
+        gevent.sleep(0.0)
+        gevent.sleep(0.0)
+
+        self.assertEqual(my_service.spawned_greenlets, [])
+
+    def test_spawn_error(self):
+        """
+        Spawning a greenlet that raises an exception must emit the error event
+        via the service.
+        """
+        my_service = make_service()
+
+        self.executed = False
+
+        def trap_error(exc_type, exc_value, exc_traceback):
+            self.assertIsInstance(exc_value, RuntimeError)
+            self.executed = True
+
+        def raise_error():
+            raise RuntimeError
+
+        my_service.on('error', trap_error)
+
+        my_service.spawn(raise_error)
+
+        gevent.sleep(0.0)
+
+        self.assertTrue(self.executed)
+
+    def test_add_service(self):
+        """
+        Adding a child service when the parent service is stopped.
+        """
+        my_service = make_service()
+        mock_service = mock.Mock()
+
+        with mock.patch.object(my_service, 'spawn') as mock_spawn:
+            my_service.add_service(mock_service)
+
+            self.assertFalse(mock_spawn.called)
+
+        self.assertEqual(my_service.services, [mock_service])
+
+    def test_add_service_start(self):
+        """
+        Adding a child service when the parent service is started.
+        """
+        my_service = make_service()
+        mock_service = mock.Mock()
+
+        my_service.start()
+
+        with mock.patch.object(my_service, 'spawn') as mock_spawn:
+            my_service.add_service(mock_service)
+
+            mock_spawn.assert_called_with(mock_service.join)
+
+        self.assertEqual(my_service.services, [mock_service])
+
+    def test_watch_service(self):
+        """
+        Ensure basic services do the right thing.
+        """
+        my_service = make_service()
+
+        my_greenlet = gevent.spawn(lambda: 5)
+
+        my_service.services = [my_greenlet]
+
+        my_service.watch_services()
+
+    def test_watch_service_error(self):
+        """
+        Error in a service.
+        """
+        my_service = make_service()
+        service = mock.Mock()
+
+        service.join.side_effect = RuntimeError
+
+        my_service.services = [service]
+
+        with self.assertRaises(RuntimeError):
+            my_service.watch_services()

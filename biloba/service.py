@@ -115,8 +115,8 @@ class Service(pyee.EventEmitter):
         """
         Called to block the current greenlet to wait for this service to finish
         """
-        if not self.started:
-            self.start()
+        # start is idempotent
+        self.start()
 
         # all `spawned` greenlets are `link`ed to `remove_greenlet` which means
         # that when `joinall` returns all of the greenlets that were passed in
@@ -175,7 +175,7 @@ class Service(pyee.EventEmitter):
 
         self.spawned_greenlets.append(thread)
 
-        thread.link(self.remove_greenlet)
+        thread.rawlink(self.remove_greenlet)
 
         return thread
 
@@ -197,9 +197,7 @@ class Service(pyee.EventEmitter):
             thread.kill()
 
         if ret.exception:
-            self.emit('error', ret.exception)
-
-            raise ret.exception
+            raise ret.exception.__class__, ret.exception, None
 
 
 class ConfigurableService(Service):
