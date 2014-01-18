@@ -167,8 +167,6 @@ class Service(pyee.EventEmitter):
                 except:
                     self.emit('error', *sys.exc_info())
 
-                    raise
-
             return wrapper
 
         thread = gevent.spawn(log_exc(func), *args, **kwargs)
