@@ -1,5 +1,6 @@
-nose
-mock
-Coverage
-flake8
+nose>=1.3.0
+mock>=1.0.1
+Coverage>=3.7.1
+flake8>=2.1.0
+
 -r requirements.txt
