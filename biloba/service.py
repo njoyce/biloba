@@ -81,7 +81,7 @@ class Service(pyee.EventEmitter):
             Log any exceptions as they happen from the function being spawned.
             """
             @functools.wraps(func)
-            def wrapper(*args, **kwargs):
+            def wrapper(*args, **kwargs):  # pylint: disable=C0111
                 try:
                     return func(*args, **kwargs)
                 except:
@@ -91,13 +91,13 @@ class Service(pyee.EventEmitter):
 
             return wrapper
 
-        g = gevent.spawn(log_exc(func), *args, **kwargs)
+        thread = gevent.spawn(log_exc(func), *args, **kwargs)
 
-        self.spawned_greenlets.append(g)
+        self.spawned_greenlets.append(thread)
 
-        g.link(lambda g: self.remove_greenlet(g))
+        thread.link(self.remove_greenlet)
 
-        return g
+        return thread
 
     def do_start(self):
         """
