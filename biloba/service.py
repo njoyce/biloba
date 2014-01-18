@@ -256,6 +256,9 @@ class Config(object):
         if original_value is missing:
             self.config[key] = value
 
+    def __getitem__(self, key, default=None):
+        return self.get(key, default=default)
+
 
 class ConfigurableService(Service):
     """
