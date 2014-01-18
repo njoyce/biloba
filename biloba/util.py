@@ -21,23 +21,37 @@ class cachedproperty(object):
         return value
 
 
+def waitany(greenlets, timeout=None, result_class=event.AsyncResult):
+    """
+    Given a list of greenlets, wait for the first one to return a result.
 
-
-def waitany(events, timeout=None, result_class=event.AsyncResult):
+    :param tasks: A list of greenlets.
+    :param timeout: The maximum amount of time to wait before raising
+        `gevent.Timeout`. A timeout of `None` means to wait potentially
+        forever.
+    :param result_class: Advanced usage and tests.
+    :return: The result of the returned greenlet.
+    """
     result = result_class()
     update = result.set
 
     try:
-        for event in events:
-            if not event.started:
-                event.start()
+        for thread in greenlets:
+            # start is idempotent :)
+            thread.start()
 
-            if event.ready():
-                return event
-            else:
-                event.rawlink(update)
+            if not thread.ready():
+                thread.rawlink(update)
+
+                continue
+
+            # this greenlet contains a value already
+            if thread.successful():
+                return thread.value
+
+            raise thread.exception
 
         return result.get(timeout=timeout)
     finally:
-        for event in events:
-            event.unlink(update)
+        for thread in greenlets:
+            thread.unlink(update)
