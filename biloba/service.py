@@ -70,6 +70,11 @@ class Service(pyee.EventEmitter):
         """
         Spawns a greenlet that is linked to this service and will be killed if
         the service stops.
+
+        :param func: The callable to execute in a new greenlet context.
+        :param args: The args to pass to the callable.
+        :param kwargs: The kwargs to pass to the callable.
+        :returns: The spawned greenlet thread.
         """
         def log_exc(func):
             """
