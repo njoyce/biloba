@@ -34,6 +34,12 @@ class Service(pyee.EventEmitter):
         self.spawned_greenlets = []
         self._logger = None
 
+    def __del__(self):
+        try:
+            self.stop()
+        except:
+            pass
+
     @util.cachedproperty
     def logger(self):
         return self.get_logger()
