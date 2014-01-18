@@ -323,3 +323,40 @@ class ServiceTestCase(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             my_service.watch_services()
+
+
+class ConfigurableServiceTestCase(unittest.TestCase):
+    """
+    Tests for `service.ConfigurableService`.
+    """
+
+    def test_create(self):
+        """
+        Create a configurable service.
+        """
+        from biloba import config
+
+        my_service = service.ConfigurableService(None)
+
+        self.assertIsInstance(my_service.config, config.Config)
+
+    def test_default_config(self):
+        """
+        Test default config
+        """
+        class MyService(service.ConfigurableService):
+            def get_config_defaults(self):
+                return {'foo': 'bar'}
+
+        my_service = MyService(None)
+
+        self.assertEqual(my_service.config['foo'], 'bar')
+
+    def test_override_default_config(self):
+        class MyService(service.ConfigurableService):
+            def get_config_defaults(self):
+                return {'foo': 'bar'}
+
+        my_service = MyService({'foo': 'baz'})
+
+        self.assertEqual(my_service.config['foo'], 'baz')

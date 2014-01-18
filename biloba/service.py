@@ -211,15 +211,17 @@ class ConfigurableService(Service):
         """
         super(ConfigurableService, self).__init__()
 
-        self.config = biloba_config.Config(config)
+        config = self.apply_default_config(config or {})
 
-        self.apply_default_config()
+        self.config = biloba_config.Config(config)
 
     def get_config_defaults(self):
         return {}
 
-    def apply_default_config(self):
+    def apply_default_config(self, config):
         defaults = self.get_config_defaults()
 
         for key, value in defaults.items():
-            self.config.setdefault(key, value)
+            config.setdefault(key, value)
+
+        return config
