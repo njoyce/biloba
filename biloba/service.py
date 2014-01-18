@@ -80,8 +80,10 @@ class Service(pyee.EventEmitter):
             def wrapper(*args, **kwargs):
                 try:
                     return func(*args, **kwargs)
-                except Exception:
+                except:
                     self.emit('error', *sys.exc_info())
+
+                    raise
 
             return wrapper
 
