@@ -21,16 +21,6 @@ class cachedproperty(object):
         return value
 
 
-def parse_address(address, port=None):
-    try:
-        address, port = address.split(':', 1)
-    except ValueError:
-        pass
-
-    if port:
-        port = int(port)
-
-    return address, port
 
 
 def waitany(events, timeout=None, result_class=event.AsyncResult):
@@ -51,19 +41,3 @@ def waitany(events, timeout=None, result_class=event.AsyncResult):
     finally:
         for event in events:
             event.unlink(update)
-
-
-def get_config_key(config, key, default=None):
-    """
-    Uses a dotted notation to traverse a dict.
-    """
-    val = config
-    missing = object()
-
-    for part in key.split('.'):
-        val = val.get(part, missing)
-
-        if val is missing:
-            return default
-
-    return val or default

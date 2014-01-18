@@ -199,66 +199,6 @@ class Service(pyee.EventEmitter):
             raise ret.exception
 
 
-class Config(object):
-    """
-    A wrapper around a dict to provide a simpler interface for getting
-    config values. Example::
-
-        my_config = {
-            'http': {
-                'address': '127.0.0.1',
-                'port': 4000,
-            },
-            'logger': {
-                'address': '${http.address}',
-            }
-        }
-
-        conf = Config(my_config)
-
-        conf.get('logger.address') == '127.0.0.1'
-    """
-
-    def __init__(self, config):
-        self.config = config
-
-    def expand(self, value):
-        if isinstance(value, list):
-            return [self.expand(sub_value) for sub_value in value]
-
-        if isinstance(value, dict):
-            ret = {}
-
-            for key, sub_value in value.items():
-                ret[key] = self.expand(sub_value)
-
-            return ret
-
-        if not isinstance(value, basestring):
-            return value
-
-        if not value.startswith('${'):
-            return value
-
-        key = value[2:-1]
-
-        return self.get(key)
-
-    def get(self, key, default=None):
-        value = util.get_config_key(self.config, key, default=default)
-
-        return self.expand(value)
-
-    def setdefault(self, key, value):
-        missing = object()
-
-        original_value = self.get(key, missing)
-
-        if original_value is missing:
-            self.config[key] = value
-
-    def __getitem__(self, key, default=None):
-        return self.get(key, default=default)
 
 
 class ConfigurableService(Service):

@@ -1,5 +1,6 @@
 from .service import Service, ConfigurableService, run
-from .util import waitany, parse_address
+from .config import parse_address
+from .util import waitany
 
 from . import _meta
 
