@@ -25,8 +25,8 @@ class Config(object):
         conf.get('logger.address') == '127.0.0.1'
     """
 
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, config=None):
+        self.config = config or {}
 
     def expand(self, value):
         if isinstance(value, list):
@@ -51,7 +51,7 @@ class Config(object):
         return self.get(key)
 
     def get(self, key, default=None):
-        value = get_config_key(self.config, key, default=default)
+        value = get_key(self.config, key, default=default)
 
         return self.expand(value)
 
@@ -61,11 +61,11 @@ class Config(object):
         if original_value is missing:
             self.config[key] = value
 
-    def __getitem__(self, key, default=None):
-        return self.get(key, default=default)
+    def __getitem__(self, key):
+        return self.get(key)
 
 
-def get_config_key(config, key, default=None):
+def get_key(config, key, default=None):
     """
     Uses a dotted notation to traverse a dict.
     """
