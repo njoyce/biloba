@@ -64,7 +64,7 @@ class Service(pyee.EventEmitter):
     def remove_greenlet(self, g):
         try:
             self.spawned_greenlets.remove(g)
-        except:
+        except ValueError:
             pass
 
     def spawn(self, func, *args, **kwargs):
