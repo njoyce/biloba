@@ -35,12 +35,11 @@ Basic usage::
     if __name__ == '__main__':
         my_service = MyService()
 
-        # could also use `biloba.run` here
-        my_service.start()
+        # start is called by join
 
         try:
             my_service.join()
         except KeyboardInterrupt:
             pass
-        finally:
-            my_service.stop()
+
+        # as is stop

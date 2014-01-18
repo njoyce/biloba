@@ -222,13 +222,3 @@ class ConfigurableService(Service):
 
         for key, value in defaults.items():
             self.config.setdefault(key, value)
-def run(service):
-    """
-    Helper function to start, join and stop a service.
-    """
-    service.start()
-
-    try:
-        service.join()
-    finally:
-        service.stop()

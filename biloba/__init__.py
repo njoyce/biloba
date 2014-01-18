@@ -1,4 +1,4 @@
-from .service import Service, ConfigurableService, run
+from .service import Service, ConfigurableService
 from .config import parse_address
 from .util import waitany
 
@@ -13,6 +13,5 @@ __all__ = [
     'ConfigurableService',
     'Service',
     'parse_address',
-    'run',
     'waitany',
 ]
