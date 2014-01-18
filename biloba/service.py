@@ -186,8 +186,8 @@ class Service(pyee.EventEmitter):
 
         greenlets.remove(ret)
 
-        for g in greenlets:
-            g.kill()
+        for thread in greenlets:
+            thread.kill()
 
         if ret.exception:
             self.emit('error', ret.exception)
