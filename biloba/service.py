@@ -159,8 +159,6 @@ class Service(pyee.EventEmitter):
     def join(self):
         """
         Called to block the current greenlet to wait for this service to finish
-
-        It is the job of the parent greenlet to call `stop`.
         """
         if not self.started:
             self.start()
@@ -171,6 +169,8 @@ class Service(pyee.EventEmitter):
         # those greenlets may have spawned more greenlets.
         while self.spawned_greenlets:
             gevent.joinall(self.spawned_greenlets)
+
+        self.stop()
 
     def watch_services(self):
         # `self.spawn` is not used because we don't use want to kill these
