@@ -44,60 +44,8 @@ class Service(pyee.EventEmitter):
     def logger(self):
         return self.get_logger()
 
+
     def get_logger(self):
-        return logbook.Logger(self.__class__.__name__)
-
-    def add_service(self, *services):
-        """
-        Add a service to this parent service object. A child service must only
-        have one parent
-        """
-        self.services.extend(services)
-
-        if not self.started:
-            return
-
-        for service in services:
-            self.spawn(service.join)
-
-    def remove_greenlet(self, g):
-        try:
-            self.spawned_greenlets.remove(g)
-        except ValueError:
-            pass
-
-    def spawn(self, func, *args, **kwargs):
-        """
-        Spawns a greenlet that is linked to this service and will be killed if
-        the service stops.
-
-        :param func: The callable to execute in a new greenlet context.
-        :param args: The args to pass to the callable.
-        :param kwargs: The kwargs to pass to the callable.
-        :returns: The spawned greenlet thread.
-        """
-        def log_exc(func):
-            """
-            Log any exceptions as they happen from the function being spawned.
-            """
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs):  # pylint: disable=C0111
-                try:
-                    return func(*args, **kwargs)
-                except:
-                    self.emit('error', *sys.exc_info())
-
-                    raise
-
-            return wrapper
-
-        thread = gevent.spawn(log_exc(func), *args, **kwargs)
-
-        self.spawned_greenlets.append(thread)
-
-        thread.link(self.remove_greenlet)
-
-        return thread
 
     def do_start(self):
         """
@@ -175,6 +123,58 @@ class Service(pyee.EventEmitter):
             gevent.joinall(self.spawned_greenlets)
 
         self.stop()
+
+    def add_service(self, *services):
+        """
+        Add a service to this parent service object. A child service must only
+        have one parent
+        """
+        self.services.extend(services)
+
+        if not self.started:
+            return
+
+        for service in services:
+            self.spawn(service.join)
+
+    def remove_greenlet(self, g):
+        try:
+            self.spawned_greenlets.remove(g)
+        except ValueError:
+            pass
+
+    def spawn(self, func, *args, **kwargs):
+        """
+        Spawns a greenlet that is linked to this service and will be killed if
+        the service stops.
+
+        :param func: The callable to execute in a new greenlet context.
+        :param args: The args to pass to the callable.
+        :param kwargs: The kwargs to pass to the callable.
+        :returns: The spawned greenlet thread.
+        """
+        def log_exc(func):
+            """
+            Log any exceptions as they happen from the function being spawned.
+            """
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):  # pylint: disable=C0111
+                try:
+                    return func(*args, **kwargs)
+                except:
+                    self.emit('error', *sys.exc_info())
+
+                    raise
+
+            return wrapper
+
+        thread = gevent.spawn(log_exc(func), *args, **kwargs)
+
+        self.spawned_greenlets.append(thread)
+
+        thread.link(self.remove_greenlet)
+
+        return thread
 
     def watch_services(self):
         # `self.spawn` is not used because we don't use want to kill these
