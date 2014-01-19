@@ -27,6 +27,13 @@ class Service(pyee.EventEmitter):
         service.
     """
 
+    __slots__ = (
+        'started',
+        'services',
+        'spawned_greenlets',
+        'logger',
+    )
+
     def __init__(self):
         super(Service, self).__init__()
 
@@ -202,6 +209,10 @@ class ConfigurableService(Service):
     """
     A service that takes a config dict
     """
+
+    __slots__ = (
+        'config',
+    )
 
     def __init__(self, config):
         """
