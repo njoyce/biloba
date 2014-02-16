@@ -40,7 +40,8 @@ class GetKeyTestCase(unittest.TestCase):
     config = {
         'foo': {
             'bar': [1, 2, 3],
-        }
+        },
+        1: 'bar'
     }
 
     def test_missing_key(self):
@@ -48,7 +49,9 @@ class GetKeyTestCase(unittest.TestCase):
         Ensure that the default is returned when the key is missing from the
         config
         """
-        self.assertIsNone(config.get_key(self.config, 'bar'))
+        with self.assertRaises(KeyError):
+            config.get_key(self.config, 'bar')
+
         missing = object()
 
         ret = config.get_key(self.config, 'bar', missing)
@@ -71,6 +74,15 @@ class GetKeyTestCase(unittest.TestCase):
         self.assertEqual(
             config.get_key(self.config, 'foo.bar'),
             self.config['foo']['bar']
+        )
+
+    def test_int(self):
+        """
+        An non string key should still work.
+        """
+        self.assertEqual(
+            config.get_key(self.config, 1),
+            'bar'
         )
 
 
@@ -142,3 +154,45 @@ class ConfigTestCase(unittest.TestCase):
         self.assertIs(conf['a'], a)
         conf.setdefault('a', b)
         self.assertIs(conf['a'], a)
+
+    def test_missing(self):
+        """
+        A missing key must raise `KeyError`.
+        """
+        conf = config.Config()
+
+        with self.assertRaises(KeyError):
+            conf['foobar']
+
+    def test_set(self):
+        """
+        Just like a dict, a key must be able to be `set`.
+        """
+        conf = config.Config()
+
+        conf['foo'] = 'bar'
+
+        self.assertEqual(conf['foo'], 'bar')
+
+    def test_contains(self):
+        """
+        Just like a dict, __contains__ should work as expected.
+        """
+        conf = config.Config()
+
+        conf['foo'] = 'bar'
+
+        self.assertNotIn('bar', conf)
+        self.assertIn('foo', conf)
+
+    def test_equality(self):
+        """
+        Just like a dict, __eq__ should work as expected.
+        """
+        conf = config.Config()
+
+        self.assertEqual(conf, {})
+
+        conf['foo'] = 'bar'
+
+        self.assertEqual(conf, {'foo': 'bar'})
