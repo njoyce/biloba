@@ -268,6 +268,30 @@ class ServiceTestCase(unittest.TestCase):
 
         self.assertTrue(self.executed)
 
+    def test_spawn_exit(self):
+        """
+        Raising `gevent.GreenletExit` is not an error as such and the thread
+        should exit correctly without emitting an `error` event.
+        """
+        my_service = make_service()
+
+        self.executed = False
+
+        def trap_error(exc_type, exc_value, exc_traceback):
+            raise AssertionError('Whoops the error was trapped')
+
+        def raise_error():
+            self.executed = True
+            raise gevent.GreenletExit
+
+        my_service.on('error', trap_error)
+
+        my_service.spawn(raise_error)
+
+        gevent.sleep(0.0)
+
+        self.assertTrue(self.executed)
+
     def test_add_service(self):
         """
         Adding a child service when the parent service is stopped.

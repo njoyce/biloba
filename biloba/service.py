@@ -171,6 +171,8 @@ class Service(pyee.EventEmitter):
             def wrapper(*args, **kwargs):  # pylint: disable=C0111
                 try:
                     return func(*args, **kwargs)
+                except gevent.GreenletExit:
+                    raise
                 except:
                     self.emit('error', *sys.exc_info())
 
