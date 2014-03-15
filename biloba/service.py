@@ -3,12 +3,11 @@ import sys
 
 import gevent
 import logbook
-import pyee
 
 from . import util, config as biloba_config
 
 
-class Service(pyee.EventEmitter):
+class Service(events.EventEmitter):
     """
     An asynchronous primitive that will maintain a pool of spawned greenlets
     and watch any child services (which are just objects the same as this).

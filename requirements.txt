@@ -1,3 +1,2 @@
 gevent>=1.0
 Logbook>=0.6.0
-pyee>=0.0.9
