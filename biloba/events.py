@@ -187,19 +187,10 @@ class EventEmitter(object):
         """
         return self._events[event]
 
-    def catch_exceptions(self, logger, **kwargs):
-        """
-        Context manager that emits errors when an exception is raised in the
-        with block.
-
-        :see: ``catch_exceptions`` for more details
-        """
-        return catch_exceptions(self, logger, **kwargs)
-
 
 @contextlib.contextmanager
-def catch_exceptions(emitter, logger, propagate=True, always_log=False,
-                     emit=True, skip_types=None):
+def emit_exceptions(emitter, logger, propagate=True, always_log=False,
+                    emit=True, skip_types=None):
     """
     A context manager that wraps a chunk of synchronous code and traps any
     exceptions. If an exception is caught and ``emit`` is ``True`` (the
@@ -221,7 +212,7 @@ def catch_exceptions(emitter, logger, propagate=True, always_log=False,
         def blow_up():
             raise RuntimeError('foobar')
 
-        with catch_exceptions(ee, logging):
+        with emit_exceptions(ee, logging):
             blow_up()
 
     The above example will print "oh dear <type 'exceptions.RuntimeError'> ..."

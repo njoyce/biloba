@@ -251,20 +251,6 @@ class EventEmitterTestCase(unittest.TestCase):
 
         self.assertIs(ctx.exception, exc)
 
-    @mock.patch.object(events, 'catch_exceptions')
-    def test_catch_exceptions(self, mock_catch):
-        """
-        Ensure ``EventEmitter.catch_exceptions`` works.
-        """
-        emitter = events.EventEmitter()
-        logger = mock.Mock()
-
-        ret = emitter.catch_exceptions(logger)
-
-        mock_catch.assert_called_once_with(emitter, logger)
-
-        self.assertEqual(ret, mock_catch())
-
 
 class GetExcInfoTestCase(unittest.TestCase):
     """
@@ -366,13 +352,13 @@ class GetExcInfoTestCase(unittest.TestCase):
         )
 
 
-class CatchExceptionsTestCase(unittest.TestCase):
+class EmitExceptionsTestCase(unittest.TestCase):
     """
-    Tests for ``events.catch_exceptions``
+    Tests for ``events.emit_exceptions``
     """
 
-    def catch_exceptions(self, emitter=None, logger=None, **kwargs):
-        return events.catch_exceptions(
+    def emit_exceptions(self, emitter=None, logger=None, **kwargs):
+        return events.emit_exceptions(
             emitter or mock.Mock(),
             logger or mock.Mock(),
             **kwargs
@@ -382,7 +368,7 @@ class CatchExceptionsTestCase(unittest.TestCase):
         """
         If there is no exception raise, don't do anything.
         """
-        with self.catch_exceptions():
+        with self.emit_exceptions():
             pass
 
     def test_skip_types(self):
@@ -396,7 +382,7 @@ class CatchExceptionsTestCase(unittest.TestCase):
         emitter = mock.Mock()
 
         with self.assertRaises(TestException):
-            with self.catch_exceptions(emitter, skip_types=(TestException,)):
+            with self.emit_exceptions(emitter, skip_types=(TestException,)):
                 raise TestException
 
     def test_propagate(self):
@@ -410,7 +396,7 @@ class CatchExceptionsTestCase(unittest.TestCase):
         exc = TestException()
 
         with self.assertRaises(TestException):
-            with self.catch_exceptions(emitter, propagate=True):
+            with self.emit_exceptions(emitter, propagate=True):
                 raise exc
 
         mock_emit = emitter.emit
@@ -433,7 +419,7 @@ class CatchExceptionsTestCase(unittest.TestCase):
         emitter = mock.Mock()
         exc = TestException()
 
-        with self.catch_exceptions(emitter, propagate=False):
+        with self.emit_exceptions(emitter, propagate=False):
             raise exc
 
         mock_emit = emitter.emit
@@ -456,7 +442,7 @@ class CatchExceptionsTestCase(unittest.TestCase):
         emitter = mock.Mock()
         logger = mock.Mock()
 
-        ctx = self.catch_exceptions(
+        ctx = self.emit_exceptions(
             emitter,
             logger,
             emit=False,
@@ -479,7 +465,7 @@ class CatchExceptionsTestCase(unittest.TestCase):
 
         logger = mock.Mock()
 
-        ctx = self.catch_exceptions(
+        ctx = self.emit_exceptions(
             logger=logger,
             always_log=True,
             propagate=False
@@ -503,7 +489,7 @@ class CatchExceptionsTestCase(unittest.TestCase):
 
         emitter.emit.side_effect = RuntimeError()
 
-        ctx = self.catch_exceptions(
+        ctx = self.emit_exceptions(
             emitter,
             logger,
             propagate=True
