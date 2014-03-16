@@ -331,11 +331,11 @@ class ConfigurableService(Service):
         """
         :param config: Provide a dict like interface
         """
-        super(ConfigurableService, self).__init__()
-
         config = self.apply_default_config(config or {})
 
         self.config = biloba_config.Config(config)
+
+        super(ConfigurableService, self).__init__()
 
     def get_config_defaults(self):
         """
