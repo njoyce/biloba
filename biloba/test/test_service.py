@@ -10,8 +10,88 @@ import gevent
 from biloba import service
 
 
-def make_service():
-    return service.Service()
+def make_service(logger=None):
+    my_service = service.Service()
+
+    if logger:
+        my_service.logger = logger
+
+    return my_service
+
+
+class ThreadPoolTestCase(unittest.TestCase):
+    """
+    Tests for ``service.ThreadPool``.
+    """
+
+    def test_create(self):
+        """
+        Ensure that a pool is sane.
+        """
+        pool = service.ThreadPool()
+
+        self.assertIsInstance(pool, service.ThreadPool)
+        self.assertEqual(pool.threads, [])
+        self.assertFalse(pool.dead)
+
+    @mock.patch('gevent.spawn')
+    def test_spawn(self, mock_spawn):
+        """
+        Spawn must put the thread in to the pool.
+        """
+        pool = service.ThreadPool()
+
+        def my_func():
+            pass
+
+        mock_thread = mock.Mock()
+
+        mock_spawn.return_value = mock_thread
+
+        thread = pool.spawn(my_func, 1, two=2)
+
+        self.assertIs(mock_thread, thread)
+        mock_spawn.assert_called_once_with(
+            my_func, 1, two=2
+        )
+
+        self.assertIn(mock_thread, pool.threads)
+
+    def test_spawn_dead(self):
+        """
+        Attempting to spawn a thread in a dead pool must raise an error
+        """
+        pool = service.ThreadPool()
+
+        pool.dead = True
+
+        with self.assertRaises(RuntimeError):
+            pool.spawn(lambda: None)
+
+    def test_add_dead(self):
+        """
+        Attempting to add a thread in a dead pool must raise an error
+        """
+        pool = service.ThreadPool()
+
+        pool.dead = True
+
+        with self.assertRaises(RuntimeError):
+            pool.add(lambda: None)
+
+    def test_add(self):
+        """
+        Adding a thread to a pool must add ``remove`` to the callback.
+        """
+        pool = service.ThreadPool()
+
+        mock_thread = mock.Mock()
+
+        pool.add(mock_thread)
+
+        self.assertIn(mock_thread, pool.threads)
+
+        mock_thread.rawlink.assert_called_once_with(pool.remove)
 
 
 class ServiceTestCase(unittest.TestCase):
@@ -27,30 +107,30 @@ class ServiceTestCase(unittest.TestCase):
 
         self.assertFalse(my_service.started)
         self.assertEqual(my_service.services, [])
-        self.assertEqual(my_service.spawned_greenlets, [])
+        self.assertIsInstance(my_service.pool, service.ThreadPool)
 
-    def test_delete(self):
+    @mock.patch.object(service.Service, 'stop')
+    def test_delete(self, mock_stop):
         """
         Ensure stop is called when deleting the service.
         """
         my_service = make_service()
 
-        with mock.patch.object(my_service, 'stop') as mock_stop:
-            my_service.__del__()
+        my_service.__del__()
 
-            mock_stop.assert_called_once_with()
+        mock_stop.assert_called_once_with()
 
-    def test_delete_error(self):
+    @mock.patch.object(service.Service, 'stop')
+    def test_delete_error(self, mock_stop):
         """
         If `stop` causes an error while `__del__` is being called, swallow the
         exception.
         """
         my_service = make_service()
 
-        with mock.patch.object(my_service, 'stop') as mock_stop:
-            mock_stop.side_effect = RuntimeError
+        mock_stop.side_effect = RuntimeError
 
-            my_service.__del__()
+        my_service.__del__()
 
     def test_get_logger(self):
         """
@@ -71,9 +151,10 @@ class ServiceTestCase(unittest.TestCase):
         """
         import logbook
 
-        my_service = make_service()
+        class MyService(service.Service):
+            logger_name = 'my_log_name'
 
-        my_service.logger_name = 'my_log_name'
+        my_service = MyService()
 
         logger = my_service.logger
 
@@ -105,34 +186,69 @@ class ServiceTestCase(unittest.TestCase):
 
         self.assertFalse(self.event_fired)
 
-    def test_do_start(self):
+    @mock.patch.object(service.Service, 'do_start')
+    def test_do_start(self, mock_do_start):
         """
         Ensure that do_start is called during `start`.
         """
         my_service = make_service()
 
-        with mock.patch.object(my_service, 'do_start') as mock_do_start:
-            my_service.start()
+        my_service.start()
 
-            mock_do_start.assert_called_one_with()
+        mock_do_start.assert_called_one_with()
 
-            # ensure that `do_start` is called only once.
-            my_service.start()
+        # ensure that `do_start` is called only once.
+        my_service.start()
 
-            mock_do_start.assert_called_one_with()
+        mock_do_start.assert_called_one_with()
 
     def test_start_services(self):
         """
         Any greenlets in `service.services` must be `start`ed.
         """
-        my_service = make_service()
+        my_service = make_service(logger=mock.Mock())
         mock_greenlet = mock.Mock()
 
-        my_service.services = [mock_greenlet]
+        my_service.add_service(mock_greenlet)
 
-        my_service.start()
+        my_service.join()
 
-        mock_greenlet.start.assert_called_once_with()
+        mock_greenlet.join.assert_called_once_with()
+
+    @mock.patch.object(service.Service, 'stop')
+    def test_start_emit_error(self, mock_stop):
+        """
+        When a service is starting, the start event is emitted. If an exception
+        occurs when emitting that event, the service must be torn down.
+        """
+        my_service = make_service()
+
+        @my_service.on('start')
+        def on_start():
+            raise RuntimeError()
+
+        with self.assertRaises(RuntimeError):
+            my_service.start()
+
+        mock_stop.assert_called_once_with()
+
+    @mock.patch.object(service.Service, 'teardown')
+    def test_do_start_error(self, mock_teardown):
+        """
+        If an exception is raised when calling ``do_start`` while the service
+        is starting, it must be torn down.
+        """
+        class MyService(service.Service):
+            def do_start(self):
+                raise RuntimeError
+
+        my_service = MyService()
+        my_service.logger = mock.Mock()
+
+        with self.assertRaises(RuntimeError):
+            my_service.start()
+
+        mock_teardown.assert_called_once_with()
 
     def test_stop_not_started(self):
         """
@@ -177,7 +293,8 @@ class ServiceTestCase(unittest.TestCase):
 
         self.assertFalse(self.event_fired)
 
-    def test_do_stop(self):
+    @mock.patch.object(service.Service, 'do_stop')
+    def test_do_stop(self, mock_do_stop):
         """
         Ensure that `do_stop` is called during `stop`.
         """
@@ -185,15 +302,14 @@ class ServiceTestCase(unittest.TestCase):
 
         my_service.start()
 
-        with mock.patch.object(my_service, 'do_stop') as mock_do_stop:
-            my_service.stop()
+        my_service.stop()
 
-            mock_do_stop.assert_called_one_with()
+        mock_do_stop.assert_called_one_with()
 
-            # ensure that `do_stop` is called only once.
-            my_service.stop()
+        # ensure that `do_stop` is called only once.
+        my_service.stop()
 
-            mock_do_stop.assert_called_one_with()
+        mock_do_stop.assert_called_one_with()
 
     def test_stop_services(self):
         """
@@ -226,23 +342,6 @@ class ServiceTestCase(unittest.TestCase):
 
         mock_start.assert_called_once_with()
         mock_stop.assert_called_with()
-
-    def test_spawn(self):
-        """
-        Spawning a greenlet via the service allows for special things.
-        """
-        my_service = make_service()
-
-        thread = my_service.spawn(lambda: [1, 2, 3])
-
-        self.assertIn(thread, my_service.spawned_greenlets)
-
-        # force a couple of context switches which allows the greenlet to be
-        # cleaned up
-        gevent.sleep(0.0)
-        gevent.sleep(0.0)
-
-        self.assertEqual(my_service.spawned_greenlets, [])
 
     def test_spawn_error(self):
         """
@@ -292,21 +391,45 @@ class ServiceTestCase(unittest.TestCase):
 
         self.assertTrue(self.executed)
 
-    def test_add_service(self):
+    @mock.patch.object(service.Service, 'spawn')
+    def test_add_service(self, mock_spawn):
         """
         Adding a child service when the parent service is stopped.
         """
         my_service = make_service()
         mock_service = mock.Mock()
 
-        with mock.patch.object(my_service, 'spawn') as mock_spawn:
-            my_service.add_service(mock_service)
+        my_service.add_service(mock_service)
 
-            self.assertFalse(mock_spawn.called)
+        self.assertFalse(mock_spawn.called)
 
         self.assertEqual(my_service.services, [mock_service])
 
-    def test_add_service_start(self):
+    def test_service_error(self):
+        """
+        If a child service emits an error, the parent service must receive it.
+        """
+        child = make_service()
+        parent = make_service()
+
+        parent.add_service(child)
+
+        self.executed = False
+
+        @parent.on('error')
+        def my_error(exc_type, exc_value, exc_tb):
+            self.assertIs(exc_type, RuntimeError)
+            self.assertIsInstance(exc_value, RuntimeError)
+            self.assertIsNone(exc_tb)
+
+            self.executed = True
+
+        child.emit('error', RuntimeError())
+
+        self.assertTrue(self.executed)
+
+    @mock.patch.object(service.Service, 'spawn')
+    def test_add_service_start(self, mock_spawn):
         """
         Adding a child service when the parent service is started.
         """
@@ -315,38 +438,11 @@ class ServiceTestCase(unittest.TestCase):
 
         my_service.start()
 
-        with mock.patch.object(my_service, 'spawn') as mock_spawn:
-            my_service.add_service(mock_service)
+        my_service.add_service(mock_service)
 
-            mock_spawn.assert_called_with(mock_service.join)
+        mock_spawn.assert_called_with(my_service.watch_service, mock_service)
 
         self.assertEqual(my_service.services, [mock_service])
-
-    def test_watch_service(self):
-        """
-        Ensure basic services do the right thing.
-        """
-        my_service = make_service()
-
-        my_greenlet = gevent.spawn(lambda: 5)
-
-        my_service.services = [my_greenlet]
-
-        my_service.watch_services()
-
-    def test_watch_service_error(self):
-        """
-        Error in a service.
-        """
-        my_service = make_service()
-        service = mock.Mock()
-
-        service.join.side_effect = RuntimeError
-
-        my_service.services = [service]
-
-        with self.assertRaises(RuntimeError):
-            my_service.watch_services()
 
 
 class ConfigurableServiceTestCase(unittest.TestCase):
