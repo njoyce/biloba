@@ -230,7 +230,7 @@ class ServiceTestCase(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             my_service.start()
 
-        mock_stop.assert_called_once_with()
+        self.assertTrue(mock_stop.called)
 
     @mock.patch.object(service.Service, 'teardown')
     def test_do_start_error(self, mock_teardown):
