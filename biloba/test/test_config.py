@@ -196,3 +196,18 @@ class ConfigTestCase(unittest.TestCase):
         conf['foo'] = 'bar'
 
         self.assertEqual(conf, {'foo': 'bar'})
+
+    def test_get_default(self):
+        """
+        If the key is missing, the default must be returned.
+        """
+        conf = config.Config()
+
+        self.assertIsNone(conf.get('foo'))
+
+        obj = object()
+
+        self.assertIs(
+            conf.get('foo', default=obj),
+            obj
+        )
