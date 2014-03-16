@@ -148,9 +148,10 @@ class EventEmitter(object):
         def _once(f):
             @functools.wraps(f)
             def g(*args, **kwargs):
-                self.remove_listener(event, g)
-
-                f(*args, **kwargs)
+                try:
+                    self.remove_listener(event, g)
+                finally:
+                    f(*args, **kwargs)
 
             return g
 
