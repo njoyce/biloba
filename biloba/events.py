@@ -85,7 +85,6 @@ class EventEmitter(object):
                 print data
 
         """
-
         def _on(f):
             # Add the necessary function
             self.listeners(event).append(f)
@@ -249,7 +248,11 @@ def emit_exceptions(emitter, logger, propagate=True, always_log=False,
             try:
                 handled = emitter.emit('error', *exc_info)
             except (Exception, BaseException) as emit_exc:
-                if emit_exc is not exc:
+                if skip_types and isinstance(emit_exc, skip_types):
+                    emit_exc = None
+                    handled = True
+
+                if emit_exc is not None and emit_exc is not exc:
                     logger.exception(
                         'Exception raised while emitting error event',
                         exc_info=sys.exc_info()

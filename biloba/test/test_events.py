@@ -500,3 +500,28 @@ class EmitExceptionsTestCase(unittest.TestCase):
                 raise TestException
 
         self.assertTrue(logger.exception.called)
+
+    def test_skip_exception_during_emit(self):
+        """
+        If an exception occurs while emitting the error event, AND it matches
+        the supplied ``skip_types`` it must NOT be logged.
+        """
+        class TestException(Exception):
+            pass
+
+        emitter = mock.Mock()
+        logger = mock.Mock()
+
+        emitter.emit.side_effect = RuntimeError()
+
+        ctx = self.emit_exceptions(
+            emitter,
+            logger,
+            skip_types=(RuntimeError,)
+        )
+
+        with self.assertRaises(TestException):
+            with ctx:
+                raise TestException
+
+        self.assertFalse(logger.exception.called)
