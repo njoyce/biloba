@@ -248,11 +248,12 @@ def emit_exceptions(emitter, logger, propagate=True, always_log=False,
         if emit:
             try:
                 handled = emitter.emit('error', *exc_info)
-            except:
-                logger.exception(
-                    'Exception raised while emitting error event',
-                    exc_info=sys.exc_info()
-                )
+            except (Exception, BaseException) as emit_exc:
+                if emit_exc is not exc:
+                    logger.exception(
+                        'Exception raised while emitting error event',
+                        exc_info=sys.exc_info()
+                    )
 
         if not handled or always_log:
             logger.error('Exception was caught', exc_info=exc_info)
