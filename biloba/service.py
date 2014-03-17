@@ -1,90 +1,7 @@
-import gevent
+import gevent.pool
 import logbook
 
 from . import config as biloba_config, events
-
-
-class ThreadPool(object):
-    """
-    Create and maintain a group of unrelated greenlets.
-
-    Spawn threads by calling ``spawn`` in the same was as you would create a
-    greenlet. Kill the pool by calling ``kill``.
-
-    :ivar threads: A list of thread maintained by this pool.
-    :ivar dead: Whether this pool is dead/dying.
-    """
-
-    __slots__ = (
-        'threads',
-        'dead',
-    )
-
-    def __init__(self):
-        self.threads = []
-        self.dead = False
-
-    def kill(self):
-        """
-        Kill all the threads in this pool and signal that the pool is dead
-        """
-        threads, self.threads = self.threads, []
-        self.dead = True
-
-        gevent.killall(threads)
-
-        self.join()
-
-    def join(self, timeout=None):
-        """
-        Wait until there are either no threads in the pool, or the pool has
-        been killed.
-
-        :param timeout: Number of seconds to wait before ``gevent.Timeout`` is
-            raised. By default, there is no timeout.
-        """
-        while not self.dead and self.threads:
-            gevent.joinall(self.threads, timeout=timeout)
-
-    def remove(self, thread):
-        """
-        Remove a thread from the pool.
-
-        :param thread: The thread to be removed.
-        """
-        try:
-            self.threads.remove(thread)
-        except ValueError:
-            pass
-
-    def spawn(self, func, *args, **kwargs):
-        """
-        Spawns a greenlet within this pool and will be removed when it 'ready'.
-
-        :param func: The callable to execute in a new greenlet context.
-        :param args: The args to pass to the callable.
-        :param kwargs: The kwargs to pass to the callable.
-        :returns: The spawned greenlet thread.
-        """
-        if self.dead:
-            raise RuntimeError('this pool is dead')
-
-        thread = gevent.spawn(func, *args, **kwargs)
-
-        self.add(thread)
-
-        return thread
-
-    def add(self, thread):
-        """
-        Add an existing thread to this pool.
-        """
-        if self.dead:
-            raise RuntimeError('this pool is dead')
-
-        self.threads.append(thread)
-
-        thread.rawlink(self.remove)
 
 
 class Service(events.EventEmitter):
@@ -126,7 +43,7 @@ class Service(events.EventEmitter):
 
         self.started = False
         self.services = []
-        self.pool = ThreadPool()
+        self.pool = gevent.pool.Group()
         self.logger = self.get_logger()
 
     def __del__(self):
@@ -194,8 +111,8 @@ class Service(events.EventEmitter):
         for service in self.services:
             service.stop()
 
-        self.pool.kill()
         self.services = []
+        self.pool.kill()
 
     def stop(self):
         """

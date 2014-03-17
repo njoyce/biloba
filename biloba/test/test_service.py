@@ -19,81 +19,6 @@ def make_service(logger=None):
     return my_service
 
 
-class ThreadPoolTestCase(unittest.TestCase):
-    """
-    Tests for ``service.ThreadPool``.
-    """
-
-    def test_create(self):
-        """
-        Ensure that a pool is sane.
-        """
-        pool = service.ThreadPool()
-
-        self.assertIsInstance(pool, service.ThreadPool)
-        self.assertEqual(pool.threads, [])
-        self.assertFalse(pool.dead)
-
-    @mock.patch('gevent.spawn')
-    def test_spawn(self, mock_spawn):
-        """
-        Spawn must put the thread in to the pool.
-        """
-        pool = service.ThreadPool()
-
-        def my_func():
-            pass
-
-        mock_thread = mock.Mock()
-
-        mock_spawn.return_value = mock_thread
-
-        thread = pool.spawn(my_func, 1, two=2)
-
-        self.assertIs(mock_thread, thread)
-        mock_spawn.assert_called_once_with(
-            my_func, 1, two=2
-        )
-
-        self.assertIn(mock_thread, pool.threads)
-
-    def test_spawn_dead(self):
-        """
-        Attempting to spawn a thread in a dead pool must raise an error
-        """
-        pool = service.ThreadPool()
-
-        pool.dead = True
-
-        with self.assertRaises(RuntimeError):
-            pool.spawn(lambda: None)
-
-    def test_add_dead(self):
-        """
-        Attempting to add a thread in a dead pool must raise an error
-        """
-        pool = service.ThreadPool()
-
-        pool.dead = True
-
-        with self.assertRaises(RuntimeError):
-            pool.add(lambda: None)
-
-    def test_add(self):
-        """
-        Adding a thread to a pool must add ``remove`` to the callback.
-        """
-        pool = service.ThreadPool()
-
-        mock_thread = mock.Mock()
-
-        pool.add(mock_thread)
-
-        self.assertIn(mock_thread, pool.threads)
-
-        mock_thread.rawlink.assert_called_once_with(pool.remove)
-
-
 class ServiceTestCase(unittest.TestCase):
     """
     Tests for `service.Service`
@@ -103,11 +28,13 @@ class ServiceTestCase(unittest.TestCase):
         """
         Ensure basic attributes when initialising the service
         """
+        from gevent import pool
+
         my_service = make_service()
 
         self.assertFalse(my_service.started)
         self.assertEqual(my_service.services, [])
-        self.assertIsInstance(my_service.pool, service.ThreadPool)
+        self.assertIsInstance(my_service.pool, pool.Group)
 
     @mock.patch.object(service.Service, 'stop')
     def test_delete(self, mock_stop):
