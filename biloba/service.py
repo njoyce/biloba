@@ -33,6 +33,7 @@ class Service(events.EventEmitter):
         'services',
         'pool',
         'logger',
+        '_run_thread',
     )
 
     # set to specify the logger name (before the first access)
@@ -45,12 +46,7 @@ class Service(events.EventEmitter):
         self.services = []
         self.pool = gevent.pool.Group()
         self.logger = self.get_logger()
-
-    def __del__(self):
-        try:
-            self.stop()
-        except:
-            pass
+        self._run_thread = None
 
     def get_logger(self):
         return logbook.Logger(self.logger_name or self.__class__.__name__)
@@ -72,7 +68,7 @@ class Service(events.EventEmitter):
         Perform any necessary cleanup.
         """
 
-    def start(self):
+    def start(self, block=True):
         """
         Called to start this service and any child services that may be
         registered.
@@ -82,25 +78,62 @@ class Service(events.EventEmitter):
         if self.started:
             return
 
-        with self.emit_exceptions():
-            try:
-                self.do_start()
+        if not self._run_thread:
+            self._run_thread = gevent.spawn(self._run)
 
-                for child in self.services:
-                    self.spawn(self.watch_service, child)
-            except:
-                self.teardown()
+        if not block:
+            return
 
-                raise
+        result = gevent.event.AsyncResult()
 
-        self.started = True
+        @self.once('error')
+        def on_error(*exc_info):
+            result.set_exception(exc_info[1])
+            self.remove_listener('start', on_start)
 
+        @self.once('start')
+        def on_start():
+            result.set()
+            self.remove_listener('error', on_error)
+
+        result.wait()
+
+    def _run(self):
         try:
-            self.emit('start')
-        except:
-            self.stop()
+            with self.emit_exceptions(propagate=False):
+                try:
+                    self.do_start()
 
-            raise
+                    for child in self.services:
+                        self.spawn(self.watch_service, child)
+                    # TODO - wait for the child services to all start
+                except:
+                    self.teardown()
+
+                    raise
+
+                self.started = True
+
+                try:
+                    self.emit('start')
+                except:
+                    self.stop()
+
+                    raise
+
+                self.pool.join()
+        finally:
+            with self.emit_exceptions(propagate=False):
+                try:
+                    self.teardown()
+                    self.do_stop()
+                finally:
+                    self._run_thread = None
+                    self.started = False
+
+                    # it is important that everything is torn down before the
+                    # event is emitted
+                    self.emit('stop')
 
     def teardown(self):
         """
@@ -114,7 +147,7 @@ class Service(events.EventEmitter):
         self.services = []
         self.pool.kill()
 
-    def stop(self):
+    def stop(self, block=True):
         """
         Called to stop this service if it is running. All child services are
         `stopped` and any greenlets this service may have spawned are killed.
@@ -124,16 +157,12 @@ class Service(events.EventEmitter):
         if not self.started:
             return
 
-        try:
-            with self.emit_exceptions():
-                self.teardown()
-                self.do_stop()
-        finally:
-            self.started = False
+        # stop is callable from any greenlet
+        if self._run_thread:
+            if self._run_thread.dead:
+                return
 
-        # it is important that everything is torn down before the event is
-        # emitted
-        self.emit('stop')
+            self._run_thread.kill(block=block)
 
     def join(self):
         """
@@ -196,7 +225,7 @@ class Service(events.EventEmitter):
             propagate=propagate,
             always_log=always_log,
             emit=emit,
-            skip_types=(gevent.GreenletExit,)
+            skip_types=(gevent.GreenletExit,),
         )
 
     def exec_func(self, func, *args, **kwargs):
