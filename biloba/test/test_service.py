@@ -150,7 +150,7 @@ class ServiceTestCase(unittest.TestCase):
         my_service.logger = mock.Mock()
 
         with self.assertRaises(RuntimeError):
-            my_service.join()
+            my_service.start()
 
         mock_teardown.assert_called_once_with()
 

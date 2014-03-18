@@ -86,7 +86,16 @@ class Service(events.EventEmitter):
 
         if not self._run_thread:
             # there is no running thread, let's start it
-            self._run_thread = gevent.spawn(self._run)
+            def run():
+                with self.emit_exceptions(propagate=False):
+                    try:
+                        self.start_service()
+
+                        self._kill.wait()
+                    finally:
+                        self.stop_service()
+
+            self._run_thread = gevent.spawn(run)
 
             # ensure that the _run_thread attribute is cleaned up when the
             # greenlet comes to an end
@@ -174,15 +183,6 @@ class Service(events.EventEmitter):
                 # event is emitted
                 self.emit('stop')
 
-    def _run(self):
-        with self.emit_exceptions(propagate=False):
-            try:
-                self.start_service()
-
-                self._kill.wait()
-            finally:
-                self.stop_service()
-
     def join(self):
         """
         Called to block the current greenlet to wait for this service to finish
@@ -268,7 +268,6 @@ class Service(events.EventEmitter):
         """
         try:
             child.join()
-            self.logger.debug('{!r} completed'.format(child))
         finally:
             self.stop()
 
