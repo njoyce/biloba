@@ -1,4 +1,6 @@
-import gevent.pool
+import functools
+import gevent
+from gevent import event, pool
 import logbook
 
 from . import config as biloba_config, events
@@ -26,6 +28,8 @@ class Service(events.EventEmitter):
         watching.
     :ivar pool: A thread pool controlled by this service. If the threadpool
         empties, this service is dead.
+    :ivar logger: The logbook instance that is used by the service to log
+        interesting events.
     """
 
     __slots__ = (
@@ -34,19 +38,21 @@ class Service(events.EventEmitter):
         'pool',
         'logger',
         '_run_thread',
+        '_kill',
     )
 
     # set to specify the logger name (before the first access)
     logger_name = None
 
-    def __init__(self):
+    def __init__(self, logger=None):
         super(Service, self).__init__()
 
         self.started = False
         self.services = []
-        self.pool = gevent.pool.Group()
-        self.logger = self.get_logger()
+        self.pool = pool.Group()
+        self.logger = logger or self.get_logger()
         self._run_thread = None
+        self._kill = event.Event()
 
     def get_logger(self):
         return logbook.Logger(self.logger_name or self.__class__.__name__)
@@ -79,11 +85,20 @@ class Service(events.EventEmitter):
             return
 
         if not self._run_thread:
+            # there is no running thread, let's start it
             self._run_thread = gevent.spawn(self._run)
+
+            # ensure that the _run_thread attribute is cleaned up when the
+            # greenlet comes to an end
+            def cleanup(g):
+                self._run_thread = None
+
+            self._run_thread.rawlink(cleanup)
 
         if not block:
             return
 
+        # block this greenlet until the run thread starts the service
         result = gevent.event.AsyncResult()
 
         @self.once('error')
@@ -96,44 +111,22 @@ class Service(events.EventEmitter):
             result.set()
             self.remove_listener('error', on_error)
 
-        result.wait()
+        result.get()
 
-    def _run(self):
-        try:
-            with self.emit_exceptions(propagate=False):
-                try:
-                    self.do_start()
+    def stop(self, block=True):
+        """
+        Called to stop this service if it is running. All child services are
+        `stopped` and any greenlets this service may have spawned are killed.
 
-                    for child in self.services:
-                        self.spawn(self.watch_service, child)
-                    # TODO - wait for the child services to all start
-                except:
-                    self.teardown()
+        Any custom code should generally go in to `do_stop`.
+        """
+        if not self.started:
+            return
 
-                    raise
+        self._kill.set()
 
-                self.started = True
-
-                try:
-                    self.emit('start')
-                except:
-                    self.stop()
-
-                    raise
-
-                self.pool.join()
-        finally:
-            with self.emit_exceptions(propagate=False):
-                try:
-                    self.teardown()
-                    self.do_stop()
-                finally:
-                    self._run_thread = None
-                    self.started = False
-
-                    # it is important that everything is torn down before the
-                    # event is emitted
-                    self.emit('stop')
+        if block:
+            self._run_thread.get()
 
     def teardown(self):
         """
@@ -147,22 +140,48 @@ class Service(events.EventEmitter):
         self.services = []
         self.pool.kill()
 
-    def stop(self, block=True):
+    def start_service(self):
         """
-        Called to stop this service if it is running. All child services are
-        `stopped` and any greenlets this service may have spawned are killed.
-
-        Any custom code should generally go in to `do_stop`.
+        Called in the running service thread to start the service. This method
+        blocks until all the child services have started.
         """
-        if not self.started:
-            return
+        self.do_start()
 
-        # stop is callable from any greenlet
-        if self._run_thread:
-            if self._run_thread.dead:
-                return
+        for child in self.services:
+            child.start(block=True)
 
-            self._run_thread.kill(block=block)
+            self.spawn(self.watch_service, child)
+
+        self.started = True
+
+        try:
+            self.emit('start')
+        except:
+            self.stop()
+
+            raise
+
+    def stop_service(self):
+        try:
+            self.teardown()
+        finally:
+            try:
+                self.do_stop()
+            finally:
+                self.started = False
+
+                # it is important that everything is torn down before the
+                # event is emitted
+                self.emit('stop')
+
+    def _run(self):
+        with self.emit_exceptions(propagate=False):
+            try:
+                self.start_service()
+
+                self._kill.wait()
+            finally:
+                self.stop_service()
 
     def join(self):
         """
@@ -171,9 +190,7 @@ class Service(events.EventEmitter):
         # start is idempotent
         self.start()
 
-        self.pool.join()
-
-        self.stop()
+        self._run_thread.get()
 
     def handle_service_error(self, service, *exc_info):
         """
@@ -228,19 +245,6 @@ class Service(events.EventEmitter):
             skip_types=(gevent.GreenletExit,),
         )
 
-    def exec_func(self, func, *args, **kwargs):
-        """
-        Execute the function and emit an error if an exception occurs. If
-        the error is not trapped/handled, the default behaviour is to
-        output the exception to the logger.
-
-        :param func: The function to execute.
-        :param args: The params to pass to `func`.
-        :param kwargs: The keyword arguments to pass to `func`.
-        """
-        with self.emit_exceptions(propagate=False):
-            return func(*args, **kwargs)
-
     def spawn(self, func, *args, **kwargs):
         """
         Spawns a greenlet that is linked to this service and will be killed if
@@ -251,7 +255,12 @@ class Service(events.EventEmitter):
         :param kwargs: The kwargs to pass to the callable.
         :returns: The spawned greenlet thread.
         """
-        return self.pool.spawn(self.exec_func, func, *args, **kwargs)
+        @functools.wraps(func)
+        def wrapped():
+            with self.emit_exceptions(propagate=False):
+                return func(*args, **kwargs)
+
+        return self.pool.spawn(wrapped)
 
     def watch_service(self, child):
         """
@@ -261,7 +270,7 @@ class Service(events.EventEmitter):
             child.join()
             self.logger.debug('{!r} completed'.format(child))
         finally:
-            self.teardown()
+            self.stop()
 
 
 class ConfigurableService(Service):

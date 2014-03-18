@@ -36,29 +36,6 @@ class ServiceTestCase(unittest.TestCase):
         self.assertEqual(my_service.services, [])
         self.assertIsInstance(my_service.pool, pool.Group)
 
-    @mock.patch.object(service.Service, 'stop')
-    def test_delete(self, mock_stop):
-        """
-        Ensure stop is called when deleting the service.
-        """
-        my_service = make_service()
-
-        my_service.__del__()
-
-        mock_stop.assert_called_once_with()
-
-    @mock.patch.object(service.Service, 'stop')
-    def test_delete_error(self, mock_stop):
-        """
-        If `stop` causes an error while `__del__` is being called, swallow the
-        exception.
-        """
-        my_service = make_service()
-
-        mock_stop.side_effect = RuntimeError
-
-        my_service.__del__()
-
     def test_get_logger(self):
         """
         A service should provide a logger as an attribute.
@@ -148,14 +125,14 @@ class ServiceTestCase(unittest.TestCase):
         When a service is starting, the start event is emitted. If an exception
         occurs when emitting that event, the service must be torn down.
         """
-        my_service = make_service()
+        my_service = make_service(logger=mock.Mock())
 
         @my_service.on('start')
         def on_start():
             raise RuntimeError()
 
         with self.assertRaises(RuntimeError):
-            my_service.start()
+            my_service.join()
 
         self.assertTrue(mock_stop.called)
 
@@ -173,7 +150,7 @@ class ServiceTestCase(unittest.TestCase):
         my_service.logger = mock.Mock()
 
         with self.assertRaises(RuntimeError):
-            my_service.start()
+            my_service.join()
 
         mock_teardown.assert_called_once_with()
 
@@ -256,19 +233,17 @@ class ServiceTestCase(unittest.TestCase):
         mock_greenlet.stop.assert_called_once_with()
 
     @mock.patch.object(service.Service, 'start')
-    @mock.patch.object(service.Service, 'stop')
-    def test_join(self, mock_stop, mock_start):
+    def test_join(self, mock_start):
         """
         Ensure that `join` works as one would expect.
         """
         my_service = make_service()
-
-        my_service.spawn(lambda: 'foobar')
+        thread = my_service._run_thread = mock.Mock()
 
         my_service.join()
 
         mock_start.assert_called_once_with()
-        mock_stop.assert_called_with()
+        thread.get.assert_called_once_with()
 
     def test_spawn_error(self):
         """
