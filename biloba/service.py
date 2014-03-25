@@ -112,15 +112,20 @@ class Service(events.EventEmitter):
 
         @self.once('error')
         def on_error(*exc_info):
-            result.set_exception(exc_info[1])
             self.remove_listener('start', on_start)
+
+            result.set(exc_info)
 
         @self.once('start')
         def on_start():
-            result.set()
             self.remove_listener('error', on_error)
 
-        result.get()
+            result.set()
+
+        exc_info = result.get()
+
+        if exc_info:
+            raise exc_info[0], exc_info[1], exc_info[2]
 
     def stop(self, block=True):
         """
