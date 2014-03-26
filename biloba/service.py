@@ -140,7 +140,10 @@ class Service(events.EventEmitter):
         self._kill.set()
 
         if block:
-            self._run_thread.get()
+            try:
+                self._run_thread.get()
+            except gevent.GreenletExit:
+                pass
 
     def teardown(self):
         """
