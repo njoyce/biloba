@@ -297,7 +297,7 @@ class ConfigurableService(Service):
 
         self.config = biloba_config.Config(config)
 
-        super(ConfigurableService, self).__init__(logger)
+        super(ConfigurableService, self).__init__(logger=logger)
 
     def get_config_defaults(self):
         """
