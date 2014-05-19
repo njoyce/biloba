@@ -289,7 +289,7 @@ class ConfigurableService(Service):
         'config',
     )
 
-    def __init__(self, config):
+    def __init__(self, config, logger=None):
         """
         :param config: Provide a dict like interface
         """
@@ -297,7 +297,7 @@ class ConfigurableService(Service):
 
         self.config = biloba_config.Config(config)
 
-        super(ConfigurableService, self).__init__()
+        super(ConfigurableService, self).__init__(logger=logger)
 
     def get_config_defaults(self):
         """
