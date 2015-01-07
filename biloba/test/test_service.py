@@ -232,8 +232,9 @@ class ServiceTestCase(unittest.TestCase):
 
         mock_greenlet.stop.assert_called_once_with()
 
+    @mock.patch.object(service.Service, 'stop')
     @mock.patch.object(service.Service, 'start')
-    def test_join(self, mock_start):
+    def test_join(self, mock_start, mock_stop):
         """
         Ensure that `join` works as one would expect.
         """
@@ -244,6 +245,7 @@ class ServiceTestCase(unittest.TestCase):
 
         mock_start.assert_called_once_with()
         thread.get.assert_called_once_with()
+        mock_stop.assert_called_once_with()
 
     def test_spawn_error(self):
         """

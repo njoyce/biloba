@@ -198,7 +198,10 @@ class Service(events.EventEmitter):
         # start is idempotent
         self.start()
 
-        self._run_thread.get()
+        try:
+            self._run_thread.get()
+        finally:
+            self.stop()
 
     def handle_service_error(self, service, *exc_info):
         """
