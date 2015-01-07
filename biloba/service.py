@@ -295,7 +295,10 @@ class ConfigurableService(Service):
         """
         config = self.apply_default_config(config or {})
 
-        self.config = biloba_config.Config(config)
+        if isinstance(config, biloba_config.Config):
+            self.config = config
+        else:
+            self.config = biloba_config.Config(config)
 
         super(ConfigurableService, self).__init__(logger=logger)
 
