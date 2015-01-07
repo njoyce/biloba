@@ -66,12 +66,18 @@ class Service(events.EventEmitter):
 
     def do_stop(self):
         """
-        Called when this service is stopping. Any child services that have been
+        Called when this service is stopped. Any child services that have been
         added to this service will have already been stopped.
 
         The thread pool will also have been cleaned up.
 
         Perform any necessary cleanup.
+        """
+
+    def do_teardown(self):
+        """
+        Called when this service is being torn down. This is different to
+        `stop` in that this will be called before any state has been torn down.
         """
 
     def start(self, block=True):
@@ -145,18 +151,6 @@ class Service(events.EventEmitter):
             except gevent.GreenletExit:
                 pass
 
-    def teardown(self):
-        """
-        Stop all services and kill any spawned greenlets.
-
-        This is generally an internally called method, use with care.
-        """
-        for service in self.services:
-            service.stop()
-
-        self.services = []
-        self.pool.kill()
-
     def start_service(self):
         """
         Called in the running service thread to start the service. This method
@@ -180,7 +174,7 @@ class Service(events.EventEmitter):
 
     def stop_service(self):
         try:
-            self.teardown()
+            self.teardown_service()
         finally:
             try:
                 self.do_stop()
@@ -190,6 +184,21 @@ class Service(events.EventEmitter):
                 # it is important that everything is torn down before the
                 # event is emitted
                 self.emit('stop')
+
+    def teardown_service(self):
+        """
+        Stop all services and kill any spawned greenlets.
+
+        This is generally an internally called method, use with care.
+        """
+        try:
+            self.do_teardown()
+        finally:
+            for service in self.services:
+                service.stop()
+
+            self.services = []
+            self.pool.kill()
 
     def join(self):
         """
