@@ -347,9 +347,14 @@ class ConfigurableService(Service):
 def autospawn(func):
     """
     Decorator that will spawn the call in a service's greenlet pool
+
+    The function will only be called once the service has started.
     """
     @functools.wraps(func)
     def wrapped(self, *args, **kwargs):
-        return self.spawn(func, self, *args, **kwargs)
+        if self.started:
+            self.spawn(func, self, *args, **kwargs)
+        else:
+            self.once('start', lambda: self.spawn(self, *args, **kwargs))
 
     return wrapped

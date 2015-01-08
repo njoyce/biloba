@@ -469,9 +469,7 @@ class AutospawnTestCase(unittest.TestCase):
     Tests for `service.autospawn`.
     """
 
-    def test_autospawn(self):
-        import gevent
-
+    def test_started(self):
         class MyService(service.Service):
             @service.autospawn
             def my_func(self):
@@ -482,12 +480,35 @@ class AutospawnTestCase(unittest.TestCase):
 
         @my_service.on('autospawn')
         def on_autospawn():
+            self.assertTrue(my_service.started)
             self.executed = True
 
         with my_service:
             ret = my_service.my_func()
 
-            self.assertIsInstance(ret, gevent.Greenlet)
-            gevent.sleep(0.0)
+            self.assertIsNone(ret)
 
         self.assertTrue(self.executed)
+
+    def test_not_started(self):
+        class MyService(service.Service):
+            @service.autospawn
+            def my_func(self):
+                self.emit('autospawn')
+
+        my_service = MyService()
+        self.executed = False
+
+        @my_service.on('autospawn')
+        def on_autospawn():
+            self.assertTrue(my_service.started)
+            self.executed = True
+
+        ret = my_service.my_func()
+
+        self.assertIsNone(ret)
+
+        self.assertFalse(self.executed)
+
+        with my_service:
+            self.assertTrue(self.executed)

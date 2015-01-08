@@ -1,4 +1,4 @@
-from .service import *
+from .service import *  # noqa
 from .service import __all__ as service_all
 from .config import parse_address
 from .util import waitany
