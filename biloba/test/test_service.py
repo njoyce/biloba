@@ -136,7 +136,7 @@ class ServiceTestCase(unittest.TestCase):
 
         self.assertTrue(mock_stop.called)
 
-    @mock.patch.object(service.Service, 'teardown')
+    @mock.patch.object(service.Service, 'teardown_service')
     def test_do_start_error(self, mock_teardown):
         """
         If an exception is raised when calling ``do_start`` while the service
@@ -347,6 +347,71 @@ class ServiceTestCase(unittest.TestCase):
         mock_spawn.assert_called_with(my_service.watch_service, mock_service)
 
         self.assertEqual(my_service.services, [mock_service])
+
+    def test_teardown(self):
+        """
+        Teardown must be called before the state of the service is torn down.
+        """
+        class MyService(service.Service):
+            def do_teardown(self):
+                self.test.assertTrue(self.started)
+                self.executed = True
+
+        my_service = MyService()
+        my_service.test = self
+
+        my_service.start()
+        my_service.stop()
+
+        self.assertTrue(my_service.executed)
+
+    def test_teardown_not_started(self):
+        """
+        Teardown must not be called if the service has not been started.
+        """
+        class MyService(service.Service):
+            executed = False
+
+            def do_teardown(self):
+                self.executed = True
+
+        my_service = MyService()
+        my_service.test = self
+
+        my_service.stop()
+
+        self.assertFalse(my_service.executed)
+
+    def test_teardown_exception(self):
+        """
+        If there is an exception in `do_teardown`, the service must still be
+        torn down.
+        """
+        self.executed = False
+
+        class MyService(service.Service):
+            def do_teardown(self):
+                raise RuntimeError
+
+        def check_error(exc_type, exc_value, exc_tb):
+            self.assertIsInstance(exc_value, RuntimeError)
+            self.executed = True
+
+        my_service = MyService()
+        mock_service = mock.Mock()
+
+        my_service.add_service(mock_service)
+
+        my_service.start()
+
+        my_service.on('error', check_error)
+
+        # stopping the service will not raise the exception but will dump it
+        # to the logger
+        my_service.stop()
+
+        mock_service.stop.assert_called_once_with()
+        self.assertTrue(self.executed)
 
 
 class ConfigurableServiceTestCase(unittest.TestCase):
