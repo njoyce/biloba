@@ -449,3 +449,16 @@ class ConfigurableServiceTestCase(unittest.TestCase):
         my_service = MyService({'foo': 'baz'})
 
         self.assertEqual(my_service.config['foo'], 'baz')
+
+    def test_biloba_config(self):
+        """
+        Supplying a :ref:`biloba.config.Config` must set that as the config
+        instance for the service.
+        """
+        from biloba import config
+
+        cfg = config.Config()
+
+        svc = service.ConfigurableService(cfg)
+
+        self.assertIs(svc.config, cfg)
