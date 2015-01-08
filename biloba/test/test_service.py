@@ -462,3 +462,32 @@ class ConfigurableServiceTestCase(unittest.TestCase):
         svc = service.ConfigurableService(cfg)
 
         self.assertIs(svc.config, cfg)
+
+
+class AutospawnTestCase(unittest.TestCase):
+    """
+    Tests for `service.autospawn`.
+    """
+
+    def test_autospawn(self):
+        import gevent
+
+        class MyService(service.Service):
+            @service.autospawn
+            def my_func(self):
+                self.emit('autospawn')
+
+        my_service = MyService()
+        self.executed = False
+
+        @my_service.on('autospawn')
+        def on_autospawn():
+            self.executed = True
+
+        with my_service:
+            ret = my_service.my_func()
+
+            self.assertIsInstance(ret, gevent.Greenlet)
+            gevent.sleep(0.0)
+
+        self.assertTrue(self.executed)

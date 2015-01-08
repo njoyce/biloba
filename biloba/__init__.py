@@ -1,4 +1,5 @@
-from .service import Service, ConfigurableService
+from .service import *
+from .service import __all__ as service_all
 from .config import parse_address
 from .util import waitany
 
@@ -10,8 +11,10 @@ __version_info__ = _meta.version_info
 
 
 __all__ = [
-    'ConfigurableService',
-    'Service',
     'parse_address',
     'waitany',
 ]
+
+__all__.extend(service_all)
+
+del service_all

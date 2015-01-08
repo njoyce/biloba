@@ -5,6 +5,12 @@ import logbook
 
 from . import config as biloba_config, events
 
+__all__ = [
+    'Service',
+    'ConfigurableService',
+    'autospawn',
+]
+
 
 class Service(events.EventEmitter):
     """
@@ -291,6 +297,14 @@ class Service(events.EventEmitter):
         finally:
             self.stop()
 
+    def __enter__(self):
+        self.start()
+
+        return self
+
+    def __exit__(self, *exc_args):
+        self.stop()
+
 
 class ConfigurableService(Service):
     """
@@ -328,3 +342,14 @@ class ConfigurableService(Service):
             config.setdefault(key, value)
 
         return config
+
+
+def autospawn(func):
+    """
+    Decorator that will spawn the call in a service's greenlet pool
+    """
+    @functools.wraps(func)
+    def wrapped(self, *args, **kwargs):
+        return self.spawn(func, self, *args, **kwargs)
+
+    return wrapped
