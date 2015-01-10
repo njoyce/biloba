@@ -6,8 +6,10 @@ from pip.req import parse_requirements
 def get_version():
     import imp
 
-    with open('biloba/_meta.py', 'rb') as fp:
-        mod = imp.load_source('_meta', 'biloba', fp)
+    filename = 'biloba/_meta.py'
+
+    with open(filename, 'rb') as fp:
+        mod = imp.load_source('_meta', filename, fp)
 
     return mod.version
 
@@ -18,7 +20,7 @@ def get_requirements(filename):
 
         session = PipSession()
     except ImportError:
-        session=None
+        session = None
 
     reqs = parse_requirements(filename, session=session)
 
