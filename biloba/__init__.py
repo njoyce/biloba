@@ -1,6 +1,6 @@
 from .service import Service, ConfigurableService
 from .config import parse_address
-from .util import waitany
+from .util import waitany, cachedproperty
 
 from . import _meta
 
@@ -14,4 +14,5 @@ __all__ = [
     'Service',
     'parse_address',
     'waitany',
+    'cachedproperty',
 ]
