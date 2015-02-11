@@ -110,6 +110,15 @@ class Service(events.EventEmitter):
 
             self._run_thread.rawlink(cleanup)
 
+            # Finish service if everything in the pool is done.
+            def finish():
+                self.pool.join()
+
+                if not self._kill.is_set():
+                    self._kill.set()
+
+            gevent.spawn(finish)
+
         if not block:
             return
 
@@ -289,7 +298,8 @@ class Service(events.EventEmitter):
         try:
             child.join()
         finally:
-            self.stop()
+            if not self._kill.is_set():
+                self._kill.set()
 
 
 class ConfigurableService(Service):
