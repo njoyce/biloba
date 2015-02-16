@@ -10,6 +10,27 @@ import gevent
 from biloba import service
 
 
+class SimpleService(service.Service):
+    """
+    Simple test service
+    """
+    def __init__(self):
+        super(SimpleService, self).__init__()
+
+    def do_start(self):
+        """
+        Start a simple service.
+        """
+        self.spawn(self.sleep)
+
+    def sleep(self):
+        """
+        Sleep forever.
+        """
+        while True:
+            gevent.sleep(1)
+
+
 def make_service(logger=None):
     my_service = service.Service()
 
@@ -69,7 +90,7 @@ class ServiceTestCase(unittest.TestCase):
         """
         Ensure that starting a service works correctly.
         """
-        my_service = make_service()
+        my_service = SimpleService()
 
         self.event_fired = False
 
@@ -79,7 +100,9 @@ class ServiceTestCase(unittest.TestCase):
         my_service.on('start', on_start)
 
         self.assertFalse(my_service.started)
+
         my_service.start()
+
         self.assertTrue(my_service.started)
         self.assertTrue(self.event_fired)
 
@@ -97,14 +120,17 @@ class ServiceTestCase(unittest.TestCase):
         """
         my_service = make_service()
 
+        # Run something on service so it doesn't stop right away.
+        my_service.spawn(gevent.sleep, 1)
+
         my_service.start()
 
-        mock_do_start.assert_called_one_with()
+        mock_do_start.assert_called_once_with()
 
         # ensure that `do_start` is called only once.
         my_service.start()
 
-        mock_do_start.assert_called_one_with()
+        mock_do_start.assert_called_once_with()
 
     def test_start_services(self):
         """
@@ -132,7 +158,7 @@ class ServiceTestCase(unittest.TestCase):
             raise RuntimeError()
 
         with self.assertRaises(RuntimeError):
-            my_service.join()
+            my_service.start()
 
         self.assertTrue(mock_stop.called)
 
@@ -174,7 +200,7 @@ class ServiceTestCase(unittest.TestCase):
         """
         Ensure that `stop`ping a service works correctly.
         """
-        my_service = make_service()
+        my_service = SimpleService()
 
         my_service.start()
 
@@ -186,7 +212,9 @@ class ServiceTestCase(unittest.TestCase):
         my_service.on('stop', on_stop)
 
         self.assertTrue(my_service.started)
+
         my_service.stop()
+
         self.assertFalse(my_service.started)
         self.assertTrue(self.event_fired)
 
@@ -202,24 +230,24 @@ class ServiceTestCase(unittest.TestCase):
         """
         Ensure that `do_stop` is called during `stop`.
         """
-        my_service = make_service()
+        my_service = SimpleService()
 
         my_service.start()
 
         my_service.stop()
 
-        mock_do_stop.assert_called_one_with()
+        mock_do_stop.assert_called_once_with()
 
         # ensure that `do_stop` is called only once.
         my_service.stop()
 
-        mock_do_stop.assert_called_one_with()
+        mock_do_stop.assert_called_once_with()
 
     def test_stop_services(self):
         """
         Any greenlets in `service.services` must be `stop`ped.
         """
-        my_service = make_service()
+        my_service = SimpleService()
         my_service.start()
 
         mock_greenlet = mock.Mock()
@@ -332,20 +360,22 @@ class ServiceTestCase(unittest.TestCase):
 
         self.assertTrue(self.executed)
 
-    @mock.patch.object(service.Service, 'spawn')
-    def test_add_service_start(self, mock_spawn):
+    @mock.patch.object(service.Service, 'watch_service')
+    def test_add_service_start(self, mock_watch):
         """
         Adding a child service when the parent service is started.
         """
-        my_service = make_service()
+        mock_watch.__name__ = 'watch_service'
+
+        my_service = SimpleService()
         mock_service = mock.Mock()
 
         my_service.start()
 
         my_service.add_service(mock_service)
+        gevent.sleep(0.0)
 
-        mock_spawn.assert_called_with(my_service.watch_service, mock_service)
-
+        mock_watch.assert_called_once_with(mock_service)
         self.assertEqual(my_service.services, [mock_service])
 
     def test_teardown(self):
@@ -376,7 +406,6 @@ class ServiceTestCase(unittest.TestCase):
                 self.executed = True
 
         my_service = MyService()
-        my_service.test = self
 
         my_service.stop()
 
@@ -412,6 +441,219 @@ class ServiceTestCase(unittest.TestCase):
 
         mock_service.stop.assert_called_once_with()
         self.assertTrue(self.executed)
+
+    def test_no_greenlets_or_child_services(self):
+        """
+        If there are no greenlets spawned on the service or child services
+        added, the service should start then immediately stop.
+        """
+        self.started = False
+        self.stopped = False
+
+        def start():
+            self.started = True
+
+        def stop():
+            self.stopped = True
+
+        class MyService(service.Service):
+            def do_start(self):
+                start()
+
+            def do_stop(self):
+                stop()
+
+        my_service = MyService()
+
+        my_service.start()
+
+        gevent.sleep(0)
+
+        self.assertTrue(self.started)
+        self.assertTrue(self.stopped)
+        self.assertFalse(my_service.started)
+
+    def test_start_stop_simple_service(self):
+        """
+        If the service spawns a greenlet that runs forever, it should run until
+        it is stopped.
+        """
+        self.executed = False
+
+        def run(time):
+            self.executed = True
+            gevent.sleep(time)
+
+        class MyService(service.Service):
+            def do_start(self):
+                self.spawn(run, 10)
+
+        my_service = MyService()
+
+        my_service.start()
+
+        self.assertTrue(self.executed)
+        self.assertTrue(my_service.started)
+
+        my_service.stop()
+
+        self.assertFalse(my_service.started)
+
+    def test_start_stop_simple_service2(self):
+        """
+        If the service spawns a single greenlet, it should run until that
+        greenlet has finished.
+        """
+        self.executed = False
+
+        def run(time):
+            self.executed = True
+            gevent.sleep(time)
+
+        class MyService(service.Service):
+            def do_start(self):
+                self.spawn(run, 0)
+
+        my_service = MyService()
+
+        my_service.start()
+
+        self.assertTrue(self.executed)
+        self.assertTrue(my_service.started)
+
+        my_service.join()
+
+        self.assertFalse(my_service.started)
+
+    def test_start_stop_with_child_service(self):
+        """
+        If the service has a child service that runs forever, it should run
+        until it is stopped.
+        """
+        self.executed = False
+
+        def run(time):
+            self.executed = True
+            gevent.sleep(time)
+
+        class ChildService(service.Service):
+            def do_start(self):
+                self.spawn(run, 10)
+
+        my_service = make_service()
+        child_service = ChildService()
+
+        my_service.add_service(child_service)
+
+        my_service.start()
+
+        self.assertTrue(self.executed)
+        self.assertTrue(my_service.started)
+        self.assertTrue(child_service.started)
+
+        my_service.stop()
+
+        self.assertFalse(my_service.started)
+        self.assertFalse(child_service.started)
+
+    def test_start_stop_with_child_service2(self):
+        """
+        If the service has a single child service, it should run until that
+        service has stopped.
+        """
+        self.executed = False
+
+        def run(time):
+            self.executed = True
+            gevent.sleep(time)
+
+        class ChildService(service.Service):
+            def do_start(self):
+                self.spawn(run, 0)
+
+        my_service = make_service()
+        child_service = ChildService()
+
+        my_service.add_service(child_service)
+
+        my_service.start()
+
+        self.assertTrue(self.executed)
+        self.assertTrue(my_service.started)
+        self.assertTrue(child_service.started)
+
+        my_service.join()
+
+        self.assertFalse(my_service.started)
+        self.assertFalse(child_service.started)
+
+    def test_stopping_with_a_child_service(self):
+        """
+        Calling stop on a service that has a child service should not cause
+        a `LoopExit` exception.
+        """
+        self.executed = [False, False]
+
+        def run(index, time):
+            self.executed[index] = True
+            gevent.sleep(time)
+
+        class MyService(service.Service):
+            def do_start(self):
+                self.spawn(run, 0, 0)
+
+        class ChildService(service.Service):
+            def do_start(self):
+                self.spawn(run, 1, 10)
+
+        my_service = MyService()
+        child_service = ChildService()
+
+        my_service.add_service(child_service)
+
+        my_service.start()
+
+        self.assertTrue(all(self.executed))
+        self.assertTrue(my_service.started)
+        self.assertTrue(child_service.started)
+
+        my_service.stop()
+
+    def test_stopping_with_a_child_service2(self):
+        """
+        A service that has a child service should be able to stop itself
+        without causing a `LoopExit` exception.
+        """
+        self.executed = [False, False]
+
+        def run(index, time):
+            self.executed[index] = True
+            gevent.sleep(time)
+
+        class MyService(service.Service):
+            def do_start(self):
+                def run_and_stop():
+                    run(0, 0)
+                    gevent.spawn(self.stop)
+
+                self.spawn(run_and_stop)
+
+        class ChildService(service.Service):
+            def do_start(self):
+                self.spawn(run, 1, 10)
+
+        my_service = MyService()
+        child_service = ChildService()
+
+        my_service.add_service(child_service)
+
+        my_service.start()
+
+        self.assertTrue(all(self.executed))
+        self.assertTrue(my_service.started)
+        self.assertTrue(child_service.started)
+
+        my_service.join()
 
 
 class ConfigurableServiceTestCase(unittest.TestCase):
