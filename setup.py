@@ -39,6 +39,9 @@ setup_args = dict(
     name='biloba',
     version=get_version(),
     maintainer='Nick Joyce',
+    description=('Provides gevent primitives to orchestrate different' 
+                 'orthogonal servers and services together.'),
+    url='https://github.com/njoyce/biloba',
     maintainer_email='nick@boxdesign.co.uk',
     packages=find_packages(),
     install_requires=get_install_requires(),
