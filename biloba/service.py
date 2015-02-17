@@ -91,11 +91,20 @@ class Service(events.EventEmitter):
             return
 
         if not self._run_thread:
+            # Finish service if everything in the pool is done.
+            def finish():
+                self.pool.join()
+
+                if not self._kill.is_set():
+                    self._kill.set()
+
             # there is no running thread, let's start it
             def run():
                 with self.emit_exceptions(propagate=False):
                     try:
                         self.start_service()
+
+                        gevent.spawn(finish)
 
                         self._kill.wait()
                     finally:
@@ -109,15 +118,6 @@ class Service(events.EventEmitter):
                 self._run_thread = None
 
             self._run_thread.rawlink(cleanup)
-
-            # Finish service if everything in the pool is done.
-            def finish():
-                self.pool.join()
-
-                if not self._kill.is_set():
-                    self._kill.set()
-
-            gevent.spawn(finish)
 
         if not block:
             return

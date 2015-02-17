@@ -465,9 +465,7 @@ class ServiceTestCase(unittest.TestCase):
 
         my_service = MyService()
 
-        my_service.start()
-
-        gevent.sleep(0)
+        my_service.join()
 
         self.assertTrue(self.started)
         self.assertTrue(self.stopped)
