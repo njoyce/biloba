@@ -22,6 +22,8 @@ class Config(object):
 
         conf = Config(my_config)
 
+        conf['logger.level'] = 'debug'
+
         conf.get('logger.address') == '127.0.0.1'
     """
 
@@ -65,7 +67,7 @@ class Config(object):
         return self.expand(value)
 
     def __setitem__(self, key, value):
-        self.config.__setitem__(key, value)
+        set_value(self.config, key, value)
 
     def __contains__(self, key):
         return self.config.__contains__(key)
@@ -97,6 +99,38 @@ def get_key(config, key, default=missing):
             return default
 
     return val
+
+
+def set_value(config, key, value):
+    """
+    Uses a dotted notation to set a value in a dict.
+
+    Example:
+        my_config = {
+            'http': {
+                'address': '127.0.0.1'
+            }
+        }
+
+        set_value(my_config, 'http.port', 5000)
+        set_value(my_config, 'log_level', 'debug')
+
+        my_config == {
+            'http': {
+                'address': '127.0.0.1',
+                'port': 5000
+            },
+            'log_level': 'debug'
+        }
+    """
+    try:
+        path, key = key.rsplit('.', 1)
+    except ValueError:
+        obj = config
+    else:
+        obj = get_key(config, path)
+
+    obj[key] = value
 
 
 def parse_address(address, port=None):

@@ -174,6 +174,53 @@ class ConfigTestCase(unittest.TestCase):
 
         self.assertEqual(conf['foo'], 'bar')
 
+    def test_set_dotted(self):
+        """
+        Set nested values using dot notation.
+        """
+        conf = config.Config()
+
+        conf['foo'] = {}
+        conf['foo.bar'] = 'baz'
+
+        self.assertEqual(conf['foo.bar'], 'baz')
+        self.assertEqual(conf['foo']['bar'], 'baz')
+
+    def test_set_dotted_multiple(self):
+        """
+        Set nested values using dot notation (multiple dots).
+        """
+        conf = config.Config()
+
+        conf['foo'] = {'bar': {}}
+        conf['foo.bar.baz'] = 'pies'
+
+        self.assertEqual(conf['foo.bar.baz'], 'pies')
+        self.assertEqual(conf['foo']['bar']['baz'], 'pies')
+
+    def test_set_dotted_missing_key(self):
+        """
+        A missing key in the dot notation path must raise a `KeyError`.
+        """
+        conf = config.Config()
+
+        conf['foo'] = {}
+
+        with self.assertRaises(KeyError):
+            conf['foo.bar.baz'] = 'pies'
+
+    def test_set_dotted_non_dict(self):
+        """
+        Setting a value on an object that doesn't implement `__setitem__` must
+        raise a `TypeError`.
+        """
+        conf = config.Config()
+
+        conf['foo'] = {'bar': 'baz'}
+
+        with self.assertRaises(TypeError):
+            conf['foo.bar.baz'] = 'pies'
+
     def test_contains(self):
         """
         Just like a dict, __contains__ should work as expected.
@@ -211,3 +258,55 @@ class ConfigTestCase(unittest.TestCase):
             conf.get('foo', default=obj),
             obj
         )
+
+
+class SetValueTestCase(unittest.TestCase):
+    """
+    Tests for `config.set_value`.
+    """
+
+    def test_set_value(self):
+        """
+        Set nested values using dot notation.
+        """
+        d = {
+            'http': {
+                'address': '127.0.0.1'
+            }
+        }
+
+        config.set_value(d, 'http.port', 5000)
+        config.set_value(d, 'log_level', 'debug')
+
+        expected = {
+            'http': {
+                'address': '127.0.0.1',
+                'port': 5000
+            },
+            'log_level': 'debug'
+        }
+
+        self.assertEqual(d, expected)
+
+    def test_missing_key_in_dot_path(self):
+        """
+        A missing key in the dot notation path must raise a `KeyError`.
+        """
+        d = {}
+
+        with self.assertRaises(KeyError):
+            config.set_value(d, 'foo.bar', 'pies')
+
+    def test_set_dotted_non_dict(self):
+        """
+        Setting a value on an object that doesn't implement `__setitem__` must
+        raise a `TypeError`.
+        """
+        d = {
+            'foo': {
+                'bar': []
+            }
+        }
+
+        with self.assertRaises(TypeError):
+            config.set_value(d, 'foo.bar.baz', 'pies')
