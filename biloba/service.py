@@ -90,6 +90,8 @@ class Service(events.EventEmitter):
         if self.started:
             return
 
+        self._kill.clear()
+
         if not self._run_thread:
             # Finish service if everything in the pool is done.
             def finish():
