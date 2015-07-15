@@ -260,6 +260,25 @@ class ServiceTestCase(unittest.TestCase):
 
         mock_greenlet.stop.assert_called_once_with()
 
+    def test_stop_start(self):
+        """
+        Ensure a service can be started after it has been stopped.
+        """
+        my_service = SimpleService()
+        my_service.start()
+
+        self.assertTrue(my_service.started)
+
+        my_service.stop()
+
+        self.assertFalse(my_service.started)
+
+        my_service.start()
+
+        # gevent.sleep(0) does not give the service enough time to run.
+        gevent.sleep(0.001)
+        self.assertTrue(my_service.started)
+
     @mock.patch.object(service.Service, 'stop')
     @mock.patch.object(service.Service, 'start')
     def test_join(self, mock_start, mock_stop):
