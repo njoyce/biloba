@@ -6,12 +6,9 @@ from pip.req import parse_requirements
 def get_version():
     import imp
 
-    filename = 'biloba/_meta.py'
+    pkg_meta = imp.load_source('_pkg_meta', 'biloba/_pkg_meta.py')
 
-    with open(filename, 'rb') as fp:
-        mod = imp.load_source('_meta', filename, fp)
-
-    return mod.version
+    return pkg_meta.version
 
 
 def get_requirements(filename):
@@ -27,27 +24,19 @@ def get_requirements(filename):
     return [str(r.req) for r in reqs]
 
 
-def get_install_requires():
-    return get_requirements('requirements.txt')
-
-
-def get_test_requires():
-    return get_requirements('requirements_dev.txt')
-
-
 setup_args = dict(
     name='biloba',
     version=get_version(),
     maintainer='Nick Joyce',
+    maintainer_email='nick@boxdesign.co.uk',
     description=(
-        'Provides gevent primitives to orchestrate different'
+        'Provides gevent primitives to orchestrate different '
         'orthogonal servers and services together.'
     ),
     url='https://github.com/njoyce/biloba',
-    maintainer_email='nick@boxdesign.co.uk',
     packages=find_packages(),
-    install_requires=get_install_requires(),
-    tests_require=get_test_requires(),
+    install_requires=get_requirements('requirements.txt'),
+    tests_require=get_requirements('requirements_dev.txt'),
 )
 
 
