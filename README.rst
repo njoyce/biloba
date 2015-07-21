@@ -8,7 +8,7 @@ Basic usage::
 
     from gevent import wsgi
 
-    import biloba
+    from biloba import core as biloba
 
     
     def hello_world(environ, start_response):

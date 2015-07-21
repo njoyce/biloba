@@ -1,11 +1,11 @@
 """
-Tests for ``biloba.events``
+Tests for ``biloba.core.events``
 """
 
 import unittest
 import mock
 
-from biloba import events
+from biloba.core import events
 
 
 class EventEmitterTestCase(unittest.TestCase):
