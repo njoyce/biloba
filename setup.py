@@ -6,7 +6,7 @@ from pip.req import parse_requirements
 def get_version():
     import imp
 
-    pkg_meta = imp.load_source('_pkg_meta', 'biloba/_pkg_meta.py')
+    pkg_meta = imp.load_source('_pkg_meta', 'biloba/core/_pkg_meta.py')
 
     return pkg_meta.version
 
@@ -29,6 +29,7 @@ setup_args = dict(
     version=get_version(),
     maintainer='Nick Joyce',
     maintainer_email='nick@boxdesign.co.uk',
+    namespace_packages=['biloba'],
     description=(
         'Provides gevent primitives to orchestrate different '
         'orthogonal servers and services together.'

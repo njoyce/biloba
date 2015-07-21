@@ -1,5 +1,5 @@
 """
-Tests for `biloba.service`.
+Tests for `biloba.core.service`.
 """
 
 import unittest
@@ -7,13 +7,14 @@ import mock
 
 import gevent
 
-from biloba import service
+from biloba.core import service
 
 
 class SimpleService(service.Service):
     """
     Simple test service
     """
+
     def __init__(self):
         super(SimpleService, self).__init__()
 
@@ -682,7 +683,7 @@ class ConfigurableServiceTestCase(unittest.TestCase):
         """
         Create a configurable service.
         """
-        from biloba import config
+        from biloba.core import config
 
         my_service = service.ConfigurableService(None)
 
@@ -714,7 +715,7 @@ class ConfigurableServiceTestCase(unittest.TestCase):
         Supplying a :ref:`biloba.config.Config` must set that as the config
         instance for the service.
         """
-        from biloba import config
+        from biloba.core import config
 
         cfg = config.Config()
 

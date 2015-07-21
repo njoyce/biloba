@@ -1,10 +1,10 @@
 """
-Tests for `biloba.config`.
+Tests for `biloba.core.config`.
 """
 
 import unittest
 
-from biloba import config
+from biloba.core import config
 
 
 class ParseAddressTestCase(unittest.TestCase):

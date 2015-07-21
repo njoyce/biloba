@@ -1,12 +1,12 @@
 """
-Tests for `biloba.util`.
+Tests for ``biloba.core.util``.
 """
 
 import unittest
 
 import gevent
 
-from biloba import util
+from biloba.core import util
 
 
 class CachedPropertyTestCase(unittest.TestCase):
