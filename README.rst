@@ -8,7 +8,7 @@ Basic usage::
 
     from gevent import wsgi
 
-    from biloba import core as biloba
+    import biloba
 
     
     def hello_world(environ, start_response):
@@ -43,3 +43,9 @@ Basic usage::
             pass
 
         # as is stop
+
+Extensions
+----------
+
+Biloba supports extensions. Define your module as ``biloba_foobar`` and import
+``biloba.ext.foobar`` will work.

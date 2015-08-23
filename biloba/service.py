@@ -3,7 +3,7 @@ import gevent
 from gevent import event, pool
 import logbook
 
-from biloba.core import config as biloba_config, events
+from biloba import config as biloba_config, events
 
 
 class Service(events.EventEmitter):

@@ -1,6 +1,18 @@
-try:
-    __import__('pkg_resources').declare_namespace(__name__)
-except ImportError:
-    from pkgutil import extend_path
+from .service import Service, ConfigurableService
+from .config import parse_address
+from .util import waitany, cachedproperty
 
-    __path__ = extend_path(__path__, __name__)
+from . import _pkg_meta
+
+
+__version__ = _pkg_meta.version
+__version_info__ = _pkg_meta.version_info
+
+
+__all__ = [
+    'ConfigurableService',
+    'Service',
+    'parse_address',
+    'waitany',
+    'cachedproperty',
+]
