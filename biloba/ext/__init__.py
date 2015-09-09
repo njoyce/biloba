@@ -87,7 +87,7 @@ class ExtImporter(object):
 
 
 def setup():
-    importer = ExtImporter('biloba_{}', __name__)
+    importer = ExtImporter('biloba_{}', __name__)  # noqa
 
     importer.install()
 
