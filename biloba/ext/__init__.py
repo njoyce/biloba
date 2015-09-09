@@ -74,7 +74,7 @@ class ExtImporter(object):
         try:
             __import__(real_mod_name)
         except ImportError:
-            sys.modules.pop(real_mod_name)
+            sys.modules.pop(real_mod_name, None)
 
             raise
 
