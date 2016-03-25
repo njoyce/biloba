@@ -400,7 +400,7 @@ class EmitExceptionsTestCase(unittest.TestCase):
                 raise exc
 
         mock_emit = emitter.emit
-        mock_emit.assert_called_once()
+        self.assertEqual(mock_emit.call_count, 1)
 
         error, exc_type, exc_value, exc_tb = mock_emit.call_args[0]
 
@@ -423,7 +423,7 @@ class EmitExceptionsTestCase(unittest.TestCase):
             raise exc
 
         mock_emit = emitter.emit
-        mock_emit.assert_called_once()
+        self.assertEqual(mock_emit.call_count, 1)
 
         error, exc_type, exc_value, exc_tb = mock_emit.call_args[0]
 
